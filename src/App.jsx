@@ -74,7 +74,6 @@ useEffect(() => {
 const displayedItems = activeTab === 'software' 
   ? games // No .filter(g => g.status === 'Paid')
   : hardware;
-  
   const grandTotal = gameSpend + hardwareSpend;
 
   // --- SEARCH ENGINE ---
