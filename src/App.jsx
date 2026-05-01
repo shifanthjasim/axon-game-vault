@@ -21,25 +21,32 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
+  // --- REFINED: LOAD DATA & SCAN MARKET ---[cite: 1]
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-      // Auto-scan for market value[cite: 1]
-      gData.forEach(game => fetchLiveMarket(game.title));
+      
+      // Auto-scan for market values if local environment allows
+      if (gData.length > 0) {
+        gData.forEach(game => fetchLiveMarket(game.title));
+      }
     } catch (err) { console.error("Cloud Error:", err); }
   }, []);
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
 
+  // --- MARKET INTEL FETCH ---
   const fetchLiveMarket = async (title) => {
     if (!title || marketIntel[title]) return; 
     try {
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { console.log("Backend offline/blocked[cite: 2]"); }
+    } catch (err) { 
+      // Silently fail if blocked by HTTPS/Mixed Content
+    }
   };
 
   const selectItem = (item) => {
@@ -48,16 +55,26 @@ export default function App() {
     fetchLiveMarket(item.title);
   };
 
-  const handleDelete = async (id) => {
+  // --- FIX: ASYNC OPTIMISTIC DELETE (Zero Freeze) ---
+  const handleDelete = (id) => {
     if (!window.confirm("Delete this asset?")) return;
     
-    // UI Feedback First - No Delay[cite: 2]
-    if (activeTab === 'Games') setGames(prev => prev.filter(g => (g.id || g._id) !== id));
-    else setHardware(prev => prev.filter(h => (h.id || h._id) !== id));
+    // 1. Instant UI update - removes item immediately[cite: 2]
+    if (activeTab === 'Games') {
+      setGames(current => current.filter(g => (g.id || g._id) !== id));
+    } else {
+      setHardware(current => current.filter(h => (h.id || h._id) !== id));
+    }
 
-    try {
-      activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
-    } catch (err) { loadCloudData(); }
+    // 2. Non-blocking background sync[cite: 1]
+    setTimeout(async () => {
+      try {
+        activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
+      } catch (err) {
+        console.error("Delete failed, re-syncing...");
+        loadCloudData(); // Re-sync if the cloud delete fails[cite: 2]
+      }
+    }, 0);
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
@@ -73,8 +90,8 @@ export default function App() {
   const getGroupedData = () => {
     const items = activeTab === 'Games' ? games : hardware;
     const sorted = [...items].sort((a, b) => {
-      const priority = { 'Shipping': 1, 'Pending': 2, 'Paid': 3 };
-      return (priority[a.status] || 4) - (priority[b.status] || 4);
+      const p = { 'Shipping': 1, 'Pending': 2, 'Paid': 3 };
+      return (p[a.status] || 4) - (p[b.status] || 4);
     });
     return sorted.reduce((groups, item) => {
       const maker = item.studio || 'Other';
