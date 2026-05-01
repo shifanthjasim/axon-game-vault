@@ -56,11 +56,25 @@ export default function App() {
     .filter(h => h.status === 'Paid' || h.status === 'Shipping')
     .reduce((acc, h) => acc + Number(h.price || 0) + Number(h.delivery || 0), 0);
 
-  const pendingSpend = [
-    ...games.filter(g => g.status === 'Pending'),
-    ...hardware.filter(h => h.status === 'Pending')
-  ].reduce((acc, i) => acc + Number(i.price || 0) + Number(i.delivery || 0), 0);
+  // Change your data loading part to this:
+useEffect(() => {
+  const loadCloudData = async () => {
+    // This pulls everything from Atlas, regardless of status
+    const gamesData = await db.games.toArray();
+    const hardwareData = await db.hardware.toArray();
+    
+    setGames(gamesData);
+    setHardware(hardwareData);
+  };
+  
+  loadCloudData();
+}, []);
 
+// Ensure your display filter is "Status Blind"
+const displayedItems = activeTab === 'software' 
+  ? games // No .filter(g => g.status === 'Paid')
+  : hardware;
+  
   const grandTotal = gameSpend + hardwareSpend;
 
   // --- SEARCH ENGINE ---
