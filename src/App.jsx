@@ -59,10 +59,8 @@ export default function App() {
   const shipVal = (i) => parseFloat(i.delivery) || 0;
   const totalVal = (i) => baseVal(i) + shipVal(i);
 
-  // --- ANALYTICS LOGIC: STATUS TRACKING ---
   const stats = {
-    gamesValue: games.reduce((acc, g) => acc + totalVal(g), 0),
-    hardwareValue: hardware.reduce((acc, h) => acc + totalVal(h), 0),
+    totalValue: [...games, ...hardware].reduce((acc, i) => acc + totalVal(i), 0),
     shippedValue: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + totalVal(i), 0),
     totalCount: games.length + hardware.length,
     gameCount: games.filter(g => g.status === 'Paid').length,
@@ -123,22 +121,20 @@ export default function App() {
         <header style={styles.header}>
           <div style={styles.brand}>
             <div style={styles.logoBox}><Gamepad2 size={24} color="#fff" /></div>
-            <div>
-              <h1 style={styles.logoText}>GameVault <span style={styles.proBadge}>PRO</span></h1>
-              <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{color: '#0f172a'}}>SENIOR SOFTWARE ENGINEER SHIFANTH JASIM</span></p>
-            </div>
+            <h1 style={styles.logoText}>GameVault <span style={styles.proBadge}>PRO</span></h1>
           </div>
+          <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{color: '#0f172a'}}>SENIOR ENGINEER SHIFANTH JASIM</span></p>
           
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}>
               <span style={styles.statLabel}>Financial Assets</span>
-              <h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.gamesValue+stats.hardwareValue).toLocaleString()}</h2>
+              <h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {stats.totalValue.toLocaleString()}</h2>
               <p style={{...styles.statDetail, color:'#3b82f6'}}>Logistics: Rs. {stats.shippedValue.toLocaleString()}</p>
             </div>
             
             <div style={styles.statBox}>
               <span style={styles.statLabel}>Inventory Status</span>
-              <div style={{display:'flex', gap:'15px', marginTop:'10px'}}>
+              <div style={{display:'flex', gap:'25px', marginTop:'10px'}}>
                 <div><h2 style={{...styles.statValue, fontSize:'18px'}}>{stats.gameCount}</h2><span style={styles.statLabel}>Owned</span></div>
                 <div><h2 style={{...styles.statValue, fontSize:'18px', color:'#f59e0b'}}>{stats.wishlistCount}</h2><span style={styles.statLabel}>Pending</span></div>
                 <div><h2 style={{...styles.statValue, fontSize:'18px', color:'#3b82f6'}}>{stats.shippingCount}</h2><span style={styles.statLabel}>Shipping</span></div>
@@ -232,19 +228,18 @@ export default function App() {
 }
 
 const styles = {
-  // FIXED FOR IPHONE BROWSER DISPLAY
-  container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', paddingTop: 'env(safe-area-inset-top)', fontFamily: '"Inter", sans-serif' },
+  container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'border-box' },
   content: { maxWidth: '1200px', margin: '0 auto' },
-  header: { display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px', width: '100%' },
-  brand: { display: 'flex', alignItems: 'center', gap: '12px', minHeight: '50px' },
-  logoBox: { backgroundColor: '#0f172a', padding: '10px', borderRadius: '12px', display: 'inline-block' },
-  logoText: { fontSize: '22px', fontWeight: '900', margin: 0, lineHeight: '1.2' },
-  creatorTag: { fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginTop: '4px', fontWeight: '700' },
-  analyticsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' },
+  header: { display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '25px' },
+  brand: { display: 'flex', alignItems: 'center', gap: '12px' },
+  logoBox: { backgroundColor: '#0f172a', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontSize: '26px', fontWeight: '900', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' },
+  creatorTag: { fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' },
+  analyticsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px', marginTop: '15px' },
   statBox: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
-  statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
+  statDetail: { fontSize: '11px', fontWeight: '700', margin: '2px 0' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display:'block' },
@@ -263,7 +258,7 @@ const styles = {
   statusTag: { fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' },
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
   loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
-  logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
+  logoutBtn: { padding: '10px 20px', borderRadius: '12px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '12px', fontWeight: '700', cursor:'pointer', marginTop: '10px', width: 'fit-content' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
   searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
   searchInput: { border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '14px' },
@@ -280,7 +275,7 @@ const styles = {
   guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px' },
   metricItem: { display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontSize:'12px', fontWeight:'700', color:'#475569', backgroundColor:'#f8fafc', padding:'8px', borderRadius:'10px' },
   guestNotice: { fontSize:'10px', fontWeight:'800', color:'#94a3b8', textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center' },
-  proBadge: { fontSize: '9px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '5px' }
+  proBadge: { fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' }
 };
 
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
