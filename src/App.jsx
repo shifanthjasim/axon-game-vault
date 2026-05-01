@@ -3,15 +3,15 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
-  Truck, Activity, Eye, Code, Percent, Globe, Clock, Plus
+  Truck, Activity, Eye, Code, Percent, Wrench, TrendingUp, Globe, Clock
 } from 'lucide-react';
 
 export default function App() {
-  // --- 1. PERSISTENT AUTHENTICATION ENGINE ---
+  // --- 1. PERSISTENT AUTHENTICATION ---
   const [authStatus, setAuthStatus] = useState(() => localStorage.getItem('axon_auth') || 'logged-out');
   const [passInput, setPassInput] = useState('');
   
-  // --- 2. CORE DATA & UI STATES ---
+  // --- 2. CORE DATA STATES ---
   const [activeTab, setActiveTab] = useState('Games');
   const [formData, setFormData] = useState({
     title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', 
@@ -23,7 +23,6 @@ export default function App() {
   const [hardware, setHardware] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Sync auth status to browser memory
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
   const loadCloudData = async () => {
@@ -32,7 +31,7 @@ export default function App() {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-    } catch (err) { console.error("AXON Sync Error:", err); } finally { setLoading(false); }
+    } catch (err) { console.error("Sync Error:", err); } finally { setLoading(false); }
   };
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
@@ -79,12 +78,8 @@ export default function App() {
     e.preventDefault();
     if (authStatus !== 'admin') return;
     try {
-      const payload = { ...formData, price: Number(formData.price) || 0, delivery: Number(formData.delivery) || 0, progress: Number(formData.progress) || 0 };
-      if (editingId) {
-        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.update(editingId, payload);
-      } else {
-        activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
-      }
+      const payload = { ...formData, price: Number(formData.price) || 0, delivery: Number(formData.delivery) || 0 };
+      activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
       resetForm();
       loadCloudData();
     } catch (err) { alert("Save Error"); }
@@ -96,7 +91,7 @@ export default function App() {
     setSearchTerm('');
   };
 
-  // --- 6. RENDER: LOGIN GATEWAY ---
+  // --- 6. RENDER: LOGIN ---
   if (authStatus === 'logged-out') {
     return (
       <div style={styles.loginOverlay}>
@@ -115,6 +110,8 @@ export default function App() {
     );
   }
 
+  const groupedData = getGroupedData();
+
   return (
     <div style={styles.container}>
       <div style={styles.content}>
@@ -129,6 +126,7 @@ export default function App() {
             </div>
           </div>
           
+          {/* RESTORED: FULL ANALYTICS BREAKDOWN */}
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}><span style={styles.statLabel}>Grand Total</span><h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.games+stats.hardware).toLocaleString()}</h2></div>
             <div style={styles.statBox}><span style={styles.statLabel}>Inventory</span><p style={styles.statDetail}>Games: Rs. {stats.games.toLocaleString()}</p><p style={styles.statDetail}>HW: Rs. {stats.hardware.toLocaleString()}</p></div>
@@ -139,6 +137,7 @@ export default function App() {
 
         <div style={styles.mainLayout}>
           
+          {/* --- LEFT PANEL --- */}
           <section>
             {authStatus === 'admin' ? (
               <div style={styles.card}>
@@ -147,6 +146,7 @@ export default function App() {
                   <button onClick={() => {setActiveTab('Hardware'); resetForm();}} style={activeTab === 'Hardware' ? styles.activeTab : styles.tab}>Hardware</button>
                 </div>
                 
+                {/* RESTORED: AUTO-FILL SEARCH UI */}
                 <div style={styles.searchWrapper}>
                   <div style={styles.searchBar}><Search size={14} color="#94a3b8" /><input style={styles.searchInput} placeholder="Auto-fill from Library..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                   {searchTerm && libraryResults.length > 0 && (
@@ -164,50 +164,48 @@ export default function App() {
                     <input style={styles.input} placeholder="Price" type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
                     <input style={styles.input} placeholder="Ship" type="number" value={formData.delivery} onChange={e => setFormData({...formData, delivery: e.target.value})} />
                   </div>
-                  <div style={styles.row}>
-                    <input style={styles.input} placeholder="Progress %" type="number" value={formData.progress} onChange={e => setFormData({...formData, progress: e.target.value})} />
-                    <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="Paid">Received</option><option value="Shipping">Shipping</option><option value="Pending">Wishlist</option></select>
-                  </div>
+                  <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="Paid">Received</option><option value="Shipping">Shipping</option><option value="Pending">Wishlist</option></select>
                   <button type="submit" style={styles.submitBtn}>{editingId ? 'Update Asset' : `Add ${activeTab}`}</button>
-                  {editingId && <button onClick={resetForm} style={styles.cancelBtn}>Cancel</button>}
                 </form>
               </div>
             ) : (
               <div style={styles.guestCard}>
                 <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
                 <h3 style={styles.guestTitle}>Observer Dashboard</h3>
-                <p style={styles.guestText}>Live synchronization of Shifanth Jasim's collection.</p>
+                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> verified digital asset collection.</p>
                 <div style={styles.guestMetrics}>
                    <div style={styles.metricItem}><Activity size={14}/> <span>Verified: {stats.totalCount} Units</span></div>
-                   <div style={styles.metricItem}><Code size={14}/> <span>Senior Software Engineer</span></div>
+                   <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
                 </div>
               </div>
             )}
           </section>
 
+          {/* --- RIGHT: VAULT VIEW --- */}
           <section>
             <div style={styles.tableCard}>
-                {Object.keys(getGroupedData()).map(maker => (
+                {Object.keys(groupedData).map(maker => (
                   <div key={maker}>
                     <div style={styles.makerHeader}><Landmark size={12}/> {maker}</div>
-                    {getGroupedData()[maker].map(item => (
+                    {groupedData[maker].map(item => (
                       <div key={item.id || item._id} style={styles.tableRow}>
                         <div style={styles.gameInfo}>
                           <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
                           <div>
                             <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
                                 <b>{item.title || item.name}</b>
-                                {activeTab === 'Games' && <span style={styles.marketTag}><Globe size={10}/> Intel</span>}
+                                {activeTab === 'Games' && <span style={styles.marketTag}><Globe size={10}/> Market Intel</span>}
                             </div>
+                            {/* RESTORED: CAMPAIGN PROGRESS BAR */}
                             {activeTab === 'Games' && item.status === 'Paid' && (
                               <div style={styles.progressTrack}><div style={{...styles.progressFill, width: `${item.progress || 0}%`}}></div></div>
                             )}
-                            <small style={{color:item.status==='Shipping'?'#3b82f6':'#64748b', fontWeight:'700'}}>{item.status}</small>
+                            <small style={{color:item.status==='Shipping'?'#3b82f6':'#64748b'}}>{item.status}</small>
                           </div>
                         </div>
                         <div style={styles.priceArea}>
                           <b>Rs. {calc(item).toLocaleString()}</b>
-                          {authStatus==='admin' && <Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id || item._id); setFormData(item); window.scrollTo(0,0);}}/>}
+                          {authStatus==='admin' && <Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id); setFormData(item); window.scrollTo(0,0);}}/>}
                         </div>
                       </div>
                     ))}
@@ -222,7 +220,7 @@ export default function App() {
   );
 }
 
-// --- MASTER STYLES ---
+// --- FULL RESPONSIVE STYLING ---
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
@@ -238,10 +236,9 @@ const styles = {
   statValue: { fontSize: '24px', fontWeight: '900', margin: '5px 0' },
   statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0', position: 'sticky', top: '20px' },
+  card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   input: { width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '16px', boxSizing: 'border-box', marginBottom: '10px' },
   submitBtn: { width: '100%', backgroundColor: '#0f172a', color: '#fff', padding: '15px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer' },
-  cancelBtn: { width: '100%', background: '#f1f5f9', color: '#64748b', padding: '10px', borderRadius: '12px', border: 'none', marginTop: '5px', cursor: 'pointer' },
   tabHeader: { display: 'flex', gap: '5px', marginBottom: '15px', backgroundColor: '#f1f5f9', padding: '5px', borderRadius: '10px' },
   tab: { flex: 1, padding: '10px', border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor:'pointer' },
   activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
@@ -257,9 +254,6 @@ const styles = {
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
   loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
   guestCard: { backgroundColor: '#fff', padding: '30px', borderRadius: '28px', border: '1px solid #e2e8f0', textAlign: 'center' },
-  guestIconBox: { backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '20px', display: 'inline-block', marginBottom: '15px' },
-  guestTitle: { fontSize: '18px', fontWeight: '900', color: '#1e293b', margin: '0 0 10px 0' },
-  guestText: { fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 20px 0' },
   guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' },
   metricItem: { display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontSize:'12px', fontWeight:'700', color:'#475569', backgroundColor:'#f8fafc', padding:'8px', borderRadius:'10px' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
@@ -268,9 +262,7 @@ const styles = {
   scrollDropdown: { position: 'absolute', top: '55px', width: '100%', maxHeight: '200px', overflowY: 'auto', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 100 },
   dropdownItem: { padding: '12px', fontSize: '12px', borderBottom: '1px solid #f1f5f9', cursor:'pointer' },
   row: { display:'flex', gap:'10px' },
-  logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
-  divider: { margin: '20px 0', color: '#cbd5e1', fontSize: '10px', fontWeight: '800' },
-  guestBtn: { width: '100%', marginTop: '10px', padding: '12px', border: 'none', background: 'none', color: '#64748b', fontWeight: '600', cursor: 'pointer' }
+  logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' }
 };
 
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
