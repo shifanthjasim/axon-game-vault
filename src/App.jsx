@@ -59,7 +59,7 @@ export default function App() {
   const shipVal = (i) => parseFloat(i.delivery) || 0;
   const totalVal = (i) => baseVal(i) + shipVal(i);
 
-  // --- UPDATED ANALYTICS LOGIC ---[cite: 5]
+  // --- UPDATED ANALYTICS LOGIC ---
   const stats = {
     gamesValue: games.reduce((acc, g) => acc + totalVal(g), 0),
     hardwareValue: hardware.reduce((acc, h) => acc + totalVal(h), 0),
@@ -129,7 +129,6 @@ export default function App() {
             </div>
           </div>
           
-          {/* --- UPDATED ANALYTICS GRID ---[cite: 5] */}
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}>
               <span style={styles.statLabel}>Financial Assets</span>
@@ -240,8 +239,8 @@ const styles = {
   logoBox: { backgroundColor: '#0f172a', padding: '10px', borderRadius: '12px', display: 'inline-block' },
   logoText: { fontSize: '22px', fontWeight: '900', margin: 0 },
   creatorTag: { fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginTop: '4px', fontWeight: '700' },
-  analyticsGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '10px' },
-  statBox: { backgroundColor: '#fff', padding: '15px', borderRadius: '24px', border: '1px solid #e2e8f0' },
+  analyticsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' },
+  statBox: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
   statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
@@ -284,7 +283,6 @@ const styles = {
 };
 
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-  styles.analyticsGrid.gridTemplateColumns = 'repeat(2, 1fr)';
   styles.mainLayout.display = 'grid';
   styles.mainLayout.gridTemplateColumns = '350px 1fr';
   styles.header.flexDirection = 'row';
