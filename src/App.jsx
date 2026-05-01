@@ -50,21 +50,24 @@ export default function App() {
     }, 0);
   };
 
-  // Helper to find manual price from library
   const getManualEst = (title) => {
     const item = PS4_LIBRARY.find(i => i.title === title);
-    return item ? item.estPrice : 0;
+    return item ? (item.estPrice || 0) : 0;
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
   const shipVal = (i) => parseFloat(i.delivery) || 0;
   const totalVal = (i) => baseVal(i) + shipVal(i);
 
+  // --- UPDATED ANALYTICS LOGIC ---[cite: 5]
   const stats = {
-    games: games.reduce((acc, g) => acc + totalVal(g), 0),
-    hardware: hardware.reduce((acc, h) => acc + totalVal(h), 0),
-    shipped: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + totalVal(i), 0),
-    totalCount: games.length + hardware.length
+    gamesValue: games.reduce((acc, g) => acc + totalVal(g), 0),
+    hardwareValue: hardware.reduce((acc, h) => acc + totalVal(h), 0),
+    shippedValue: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + totalVal(i), 0),
+    totalCount: games.length + hardware.length,
+    gameCount: games.filter(g => g.status === 'Paid').length,
+    wishlistCount: games.filter(g => g.status === 'Pending').length,
+    shippingCount: games.filter(g => g.status === 'Shipping').length
   };
 
   const getGroupedData = () => {
@@ -87,7 +90,7 @@ export default function App() {
     try {
       const payload = { ...formData, price: Number(formData.price) || 0, delivery: Number(formData.delivery) || 0 };
       if (editingId) {
-        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.add(payload);
+        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.update(editingId, payload);
       } else {
         activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
       }
@@ -114,8 +117,6 @@ export default function App() {
     );
   }
 
-  const groupedData = getGroupedData();
-
   return (
     <div style={styles.container}>
       <div style={styles.content}>
@@ -127,11 +128,22 @@ export default function App() {
               <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{color: '#0f172a'}}>SENIOR SOFTWARE ENGINEER SHIFANTH JASIM</span></p>
             </div>
           </div>
+          
+          {/* --- UPDATED ANALYTICS GRID ---[cite: 5] */}
           <div style={styles.analyticsGrid}>
-            <div style={styles.statBox}><span style={styles.statLabel}>Grand Total</span><h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.games+stats.hardware).toLocaleString()}</h2></div>
             <div style={styles.statBox}>
-              <span style={styles.statLabel}>Market Intel</span>
-              <div style={styles.dateTag}><Calendar size={12}/> Verified: May 1, 2026</div>
+              <span style={styles.statLabel}>Financial Assets</span>
+              <h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.gamesValue+stats.hardwareValue).toLocaleString()}</h2>
+              <p style={{...styles.statDetail, color:'#3b82f6'}}>Logistics: Rs. {stats.shippedValue.toLocaleString()}</p>
+            </div>
+            
+            <div style={styles.statBox}>
+              <span style={styles.statLabel}>Inventory Status</span>
+              <div style={{display:'flex', gap:'15px', marginTop:'10px'}}>
+                <div><h2 style={{...styles.statValue, fontSize:'18px'}}>{stats.gameCount}</h2><span style={styles.statLabel}>Owned</span></div>
+                <div><h2 style={{...styles.statValue, fontSize:'18px', color:'#f59e0b'}}>{stats.wishlistCount}</h2><span style={styles.statLabel}>Pending</span></div>
+                <div><h2 style={{...styles.statValue, fontSize:'18px', color:'#3b82f6'}}>{stats.shippingCount}</h2><span style={styles.statLabel}>Shipping</span></div>
+              </div>
             </div>
           </div>
           <button onClick={() => {setAuthStatus('logged-out'); localStorage.removeItem('axon_auth');}} style={styles.logoutBtn}>Logout</button>
@@ -154,7 +166,7 @@ export default function App() {
                 <form onSubmit={handleSubmit} style={styles.form}>
                   <input style={styles.input} placeholder="Title" value={activeTab === 'Games' ? formData.title : formData.name} onChange={e => setFormData({...formData, [activeTab === 'Games'?'title':'name']: e.target.value})} />
                   <div style={styles.row}>
-                    <div style={{flex:1}}><label style={styles.miniLabel}>Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
+                    <div style={{flex:1}}><label style={styles.miniLabel}>Unit Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
                     <div style={{flex:1}}><label style={styles.miniLabel}>Delivery</label><input style={styles.input} type="number" value={formData.delivery} onChange={e => setFormData({...formData, delivery: e.target.value})} /></div>
                   </div>
                   <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="Paid">Received</option><option value="Shipping">Shipping</option><option value="Pending">Wishlist</option></select>
@@ -165,23 +177,22 @@ export default function App() {
               <div style={styles.guestCard}>
                 <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
                 <h3 style={styles.guestTitle}>Observer Dashboard</h3>
-                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> verified collection.</p>
                 <div style={styles.guestMetrics}>
-                   <div style={styles.metricItem}><Activity size={14}/> <span>Verified: {stats.totalCount} Units</span></div>
+                   <div style={styles.metricItem}><Activity size={14}/> <span>Verified Assets: {stats.totalCount}</span></div>
                    <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
-                   <div style={styles.metricItem}><Eye size={14}/> <span>Status: Read-Only</span></div>
+                   <div style={styles.metricItem}><Eye size={14}/> <span>Status: Read-Only Access</span></div>
                 </div>
-                <div style={styles.guestNotice}><Lock size={12} style={{marginRight:'5px'}}/> Modifications Restricted</div>
+                <div style={styles.guestNotice}><Lock size={12} style={{marginRight:'5px'}}/> System Modifications Restricted</div>
               </div>
             )}
           </section>
 
           <section>
             <div style={styles.tableCard}>
-                {Object.keys(groupedData).map(maker => (
+                {Object.keys(getGroupedData()).map(maker => (
                   <div key={maker}>
                     <div style={styles.makerHeader}><Landmark size={12}/> {maker}</div>
-                    {groupedData[maker].map(item => (
+                    {getGroupedData()[maker].map(item => (
                       <div key={item.id || item._id} style={styles.tableRow}>
                         <div style={styles.gameInfo}>
                           <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
@@ -194,7 +205,7 @@ export default function App() {
                                   </span>
                                 )}
                             </div>
-                            <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Del: {shipVal(item).toLocaleString()}</small>
+                            <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Ship: {shipVal(item).toLocaleString()}</small>
                           </div>
                         </div>
                         <div style={styles.priceArea}>
@@ -230,10 +241,10 @@ const styles = {
   logoText: { fontSize: '22px', fontWeight: '900', margin: 0 },
   creatorTag: { fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginTop: '4px', fontWeight: '700' },
   analyticsGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '10px' },
-  statBox: { backgroundColor: '#fff', padding: '15px', borderRadius: '20px', border: '1px solid #e2e8f0' },
+  statBox: { backgroundColor: '#fff', padding: '15px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
-  dateTag: { backgroundColor: '#f8fafc', color: '#64748b', padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '5px' },
+  statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display:'block' },
@@ -251,7 +262,7 @@ const styles = {
   priceAlign: { display: 'flex', flexDirection: 'column' },
   statusTag: { fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' },
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
-  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '380px', textAlign: 'center' },
+  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
   logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
   searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
@@ -266,7 +277,6 @@ const styles = {
   guestCard: { backgroundColor: '#fff', padding: '30px', borderRadius: '28px', border: '1px solid #e2e8f0', textAlign: 'center' },
   guestIconBox: { backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '20px', display: 'inline-block', marginBottom: '15px' },
   guestTitle: { fontSize: '18px', fontWeight: '900', color: '#1e293b', margin: '0 0 10px 0' },
-  guestText: { fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 20px 0' },
   guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px' },
   metricItem: { display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontSize:'12px', fontWeight:'700', color:'#475569', backgroundColor:'#f8fafc', padding:'8px', borderRadius:'10px' },
   guestNotice: { fontSize:'10px', fontWeight:'800', color:'#94a3b8', textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center' },
