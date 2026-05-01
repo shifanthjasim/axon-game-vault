@@ -3,15 +3,15 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
-  Truck, Activity, Eye, Code, Percent, Wrench, TrendingUp, Globe, Clock, Plus
+  Truck, Activity, Eye, Code, Percent, Globe, Clock, Plus
 } from 'lucide-react';
 
 export default function App() {
-  // --- 1. PERSISTENT AUTHENTICATION ---
+  // --- 1. PERSISTENT AUTHENTICATION ENGINE ---
   const [authStatus, setAuthStatus] = useState(() => localStorage.getItem('axon_auth') || 'logged-out');
   const [passInput, setPassInput] = useState('');
   
-  // --- 2. CORE DATA STATES ---
+  // --- 2. CORE DATA & UI STATES ---
   const [activeTab, setActiveTab] = useState('Games');
   const [formData, setFormData] = useState({
     title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', 
@@ -23,6 +23,7 @@ export default function App() {
   const [hardware, setHardware] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Sync auth status to browser memory
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
   const loadCloudData = async () => {
@@ -31,7 +32,7 @@ export default function App() {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-    } catch (err) { console.error("Cloud Sync Error:", err); } finally { setLoading(false); }
+    } catch (err) { console.error("AXON Sync Error:", err); } finally { setLoading(false); }
   };
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
@@ -86,7 +87,7 @@ export default function App() {
       }
       resetForm();
       loadCloudData();
-    } catch (err) { alert("Cloud Save Error"); }
+    } catch (err) { alert("Save Error"); }
   };
 
   const resetForm = () => {
@@ -95,7 +96,7 @@ export default function App() {
     setSearchTerm('');
   };
 
-  // --- 6. RENDER: LOGIN ---
+  // --- 6. RENDER: LOGIN GATEWAY ---
   if (authStatus === 'logged-out') {
     return (
       <div style={styles.loginOverlay}>
@@ -113,8 +114,6 @@ export default function App() {
       </div>
     );
   }
-
-  const groupedData = getGroupedData();
 
   return (
     <div style={styles.container}>
@@ -140,7 +139,6 @@ export default function App() {
 
         <div style={styles.mainLayout}>
           
-          {/* --- LEFT PANEL: CONTROL / GUEST --- */}
           <section>
             {authStatus === 'admin' ? (
               <div style={styles.card}>
@@ -187,13 +185,12 @@ export default function App() {
             )}
           </section>
 
-          {/* --- RIGHT PANEL: VAULT VIEW --- */}
           <section>
             <div style={styles.tableCard}>
-                {Object.keys(groupedData).map(maker => (
+                {Object.keys(getGroupedData()).map(maker => (
                   <div key={maker}>
                     <div style={styles.makerHeader}><Landmark size={12}/> {maker}</div>
-                    {groupedData[maker].map(item => (
+                    {getGroupedData()[maker].map(item => (
                       <div key={item.id || item._id} style={styles.tableRow}>
                         <div style={styles.gameInfo}>
                           <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
