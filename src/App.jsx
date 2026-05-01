@@ -3,7 +3,7 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
-  Truck, Activity, Eye, Code, Globe, Plus, Lock, Calendar
+  Truck, Activity, Eye, Code, Globe, Plus, Lock, Calendar, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 export default function App() {
@@ -65,7 +65,13 @@ export default function App() {
     totalCount: games.length + hardware.length,
     gameCount: games.filter(g => g.status === 'Paid').length,
     wishlistCount: games.filter(g => g.status === 'Pending').length,
-    shippingCount: games.filter(g => g.status === 'Shipping').length
+    shippingCount: games.filter(g => g.status === 'Shipping').length,
+    // Calculation for Market Gain/Loss
+    marketYield: games.reduce((acc, g) => {
+      const marketPrice = getManualEst(g.title);
+      if (marketPrice === 0) return acc;
+      return acc + (marketPrice - totalVal(g));
+    }, 0)
   };
 
   const getGroupedData = () => {
@@ -132,17 +138,23 @@ export default function App() {
           
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}>
-              <span style={styles.statLabel}>PlayStation 4 Library Value</span>
+              <span style={styles.statLabel}>PS4 Library Value</span>
               <h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {stats.totalValue.toLocaleString()}</h2>
-              <p style={{...styles.statDetail, color:'#3b82f6'}}>Logistics: Rs. {stats.shippedValue.toLocaleString()}</p>
+              <div style={{display:'flex', alignItems:'center', gap:'5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center'}}>
+                {stats.marketYield >= 0 ? <TrendingUp size={12} color="#10b981"/> : <TrendingDown size={12} color="#ef4444"/>}
+                <p style={{...styles.statDetail, color: stats.marketYield >= 0 ? '#10b981' : '#ef4444', margin:0}}>
+                  Market {stats.marketYield >= 0 ? 'Gain' : 'Loss'}: Rs. {Math.abs(stats.marketYield).toLocaleString()}
+                </p>
+              </div>
             </div>
             
             <div style={styles.statBox}>
-              <span style={styles.statLabel}>Inventory Status</span>
-              <div style={{display:'flex', gap:'25px', marginTop:'10px', justifyContent: 'center'}}>
-                <div><h2 style={{...styles.statValue, fontSize:'18px'}}>{stats.gameCount}</h2><span style={styles.statLabel}>Owned</span></div>
-                <div><h2 style={{...styles.statValue, fontSize:'18px', color:'#f59e0b'}}>{stats.wishlistCount}</h2><span style={styles.statLabel}>Pending</span></div>
-                <div><h2 style={{...styles.statValue, fontSize:'18px', color:'#3b82f6'}}>{stats.shippingCount}</h2><span style={styles.statLabel}>Shipping</span></div>
+              <span style={styles.statLabel}>Logistics & Status</span>
+              <h2 style={{...styles.statValue, color:'#3b82f6'}}>Rs. {stats.shippedValue.toLocaleString()}</h2>
+              <div style={{display:'flex', gap:'15px', marginTop:'5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center'}}>
+                <div><span style={styles.miniLabel}>Owned</span><b style={{fontSize:'14px'}}>{stats.gameCount}</b></div>
+                <div><span style={styles.miniLabel}>Pending</span><b style={{fontSize:'14px', color:'#f59e0b'}}>{stats.wishlistCount}</b></div>
+                <div><span style={styles.miniLabel}>In Transit</span><b style={{fontSize:'14px', color:'#3b82f6'}}>{stats.shippingCount}</b></div>
               </div>
             </div>
           </div>
@@ -200,7 +212,7 @@ export default function App() {
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
                                 {getManualEst(item.title || item.name) > 0 && (
-                                  <span style={styles.marketTag}>
+                                  <span style={{...styles.marketTag, backgroundColor: (getManualEst(item.title || item.name) - totalVal(item)) >= 0 ? '#f0fdf4' : '#fef2f2', color: (getManualEst(item.title || item.name) - totalVal(item)) >= 0 ? '#10b981' : '#ef4444'}}>
                                     <Globe size={10}/> Resell: Rs. {getManualEst(item.title || item.name).toLocaleString()}
                                   </span>
                                 )}
@@ -262,7 +274,7 @@ const styles = {
   titleFlex: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
   costBreakdown: { fontSize: '10px', color: '#94a3b8', fontWeight: '600' },
   avatar: { width: '35px', height: '35px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' },
-  marketTag: { backgroundColor: '#f0fdf4', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' },
+  marketTag: { color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' },
   priceArea: { display: 'flex', alignItems: 'center', gap: '15px', textAlign: 'right' },
   priceAlign: { display: 'flex', flexDirection: 'column' },
   statusTag: { fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' },
