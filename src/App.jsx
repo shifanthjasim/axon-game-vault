@@ -59,7 +59,7 @@ export default function App() {
   const shipVal = (i) => parseFloat(i.delivery) || 0;
   const totalVal = (i) => baseVal(i) + shipVal(i);
 
-  // --- UPDATED ANALYTICS LOGIC ---
+  // --- ANALYTICS LOGIC: STATUS TRACKING ---
   const stats = {
     gamesValue: games.reduce((acc, g) => acc + totalVal(g), 0),
     hardwareValue: hardware.reduce((acc, h) => acc + totalVal(h), 0),
@@ -232,12 +232,13 @@ export default function App() {
 }
 
 const styles = {
-  container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
+  // FIXED FOR IPHONE BROWSER DISPLAY
+  container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', paddingTop: 'env(safe-area-inset-top)', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
-  header: { display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' },
-  brand: { display: 'flex', alignItems: 'center', gap: '12px' },
+  header: { display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px', width: '100%' },
+  brand: { display: 'flex', alignItems: 'center', gap: '12px', minHeight: '50px' },
   logoBox: { backgroundColor: '#0f172a', padding: '10px', borderRadius: '12px', display: 'inline-block' },
-  logoText: { fontSize: '22px', fontWeight: '900', margin: 0 },
+  logoText: { fontSize: '22px', fontWeight: '900', margin: 0, lineHeight: '1.2' },
   creatorTag: { fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginTop: '4px', fontWeight: '700' },
   analyticsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' },
   statBox: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
@@ -287,4 +288,5 @@ if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
   styles.mainLayout.gridTemplateColumns = '350px 1fr';
   styles.header.flexDirection = 'row';
   styles.header.justifyContent = 'space-between';
+  styles.header.alignItems = 'center';
 }
