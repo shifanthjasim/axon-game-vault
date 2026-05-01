@@ -7,11 +7,8 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  // --- PERSISTENT AUTHENTICATION ---
   const [authStatus, setAuthStatus] = useState(() => localStorage.getItem('axon_auth') || 'logged-out');
   const [passInput, setPassInput] = useState('');
-  
-  // --- CORE DATA STATES ---
   const [activeTab, setActiveTab] = useState('Games');
   const [formData, setFormData] = useState({
     title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid'
@@ -20,8 +17,6 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [games, setGames] = useState([]);
   const [hardware, setHardware] = useState([]);
-
-  // --- NEW: MARKET INTEL STATE ---[cite: 1]
   const [marketIntel, setMarketIntel] = useState({});
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
@@ -31,36 +26,29 @@ export default function App() {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
+      
+      // AUTO-SCAN: Fetch market data for all existing games on load
+      gData.forEach(game => fetchLiveMarket(game.title));
     } catch (err) { console.error("Cloud Error:", err); }
   };
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
 
-  // --- NEW: FETCH LIVE MARKET VALUE ---[cite: 1]
   const fetchLiveMarket = async (title) => {
-    if (!title) return;
+    if (!title || marketIntel[title]) return; 
     try {
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { console.log("Market Engine Offline on Port 5001"); }
+    } catch (err) { console.log("Backend offline on Port 5001"); }
   };
-
-  // --- LOGIC: AUTO-FILL SEARCH ---
-  const libraryResults = PS4_LIBRARY.filter(item => {
-    if (!searchTerm) return false;
-    const matches = item.title.toLowerCase().includes(searchTerm.toLowerCase());
-    return activeTab === 'Games' ? (matches && !item.type) : (matches && item.type);
-  }).slice(0, 8);
 
   const selectItem = (item) => {
-    const title = item.title;
-    setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: title, studio: item.studio });
+    setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: item.title, studio: item.studio });
     setSearchTerm('');
-    fetchLiveMarket(title); // <--- Triggers the backend scraper[cite: 1]
+    fetchLiveMarket(item.title);
   };
 
-  // --- LOGIC: CALCULATIONS ---
   const baseVal = (i) => parseFloat(i.price) || 0;
   const shipVal = (i) => parseFloat(i.delivery) || 0;
   const totalVal = (i) => baseVal(i) + shipVal(i);
@@ -91,10 +79,22 @@ export default function App() {
     if (authStatus !== 'admin') return;
     try {
       const payload = { ...formData, price: Number(formData.price) || 0, delivery: Number(formData.delivery) || 0 };
-      activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
+      if (editingId) {
+        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.update(editingId, payload);
+      } else {
+        activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
+      }
       setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid' });
+      setEditingId(null);
       loadCloudData();
     } catch (err) { alert("Save Error"); }
+  };
+
+  // RESTORED: DELETE FUNCTION
+  const handleDelete = async (id) => {
+    if (!window.confirm("Permanently delete this asset?")) return;
+    activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
+    loadCloudData();
   };
 
   if (authStatus === 'logged-out') {
@@ -117,7 +117,6 @@ export default function App() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        
         <header style={styles.header}>
           <div style={styles.brand}>
             <div style={styles.logoBox}><Gamepad2 size={24} color="#fff" /></div>
@@ -134,7 +133,6 @@ export default function App() {
         </header>
 
         <div style={styles.mainLayout}>
-          
           <section>
             {authStatus === 'admin' ? (
               <div style={styles.card}>
@@ -144,18 +142,18 @@ export default function App() {
                 </div>
                 <div style={styles.searchWrapper}>
                   <div style={styles.searchBar}><Search size={14} color="#94a3b8" /><input style={styles.searchInput} placeholder="Auto-fill..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                  {searchTerm && libraryResults.length > 0 && (
-                    <div style={styles.scrollDropdown}>{libraryResults.map((item, i) => (<div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}><b>{item.title}</b></div>))}</div>
+                  {searchTerm && PS4_LIBRARY.filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase())).length > 0 && (
+                    <div style={styles.scrollDropdown}>{PS4_LIBRARY.filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase())).slice(0,8).map((item, i) => (<div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}><b>{item.title}</b></div>))}</div>
                   )}
                 </div>
                 <form onSubmit={handleSubmit} style={styles.form}>
                   <input style={styles.input} placeholder="Title" value={activeTab === 'Games' ? formData.title : formData.name} onChange={e => setFormData({...formData, [activeTab === 'Games'?'title':'name']: e.target.value})} />
                   <div style={styles.row}>
-                    <div style={{flex:1}}><label style={styles.miniLabel}>Unit Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
+                    <div style={{flex:1}}><label style={styles.miniLabel}>Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
                     <div style={{flex:1}}><label style={styles.miniLabel}>Delivery</label><input style={styles.input} type="number" value={formData.delivery} onChange={e => setFormData({...formData, delivery: e.target.value})} /></div>
                   </div>
                   <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="Paid">Received</option><option value="Shipping">Shipping</option><option value="Pending">Wishlist</option></select>
-                  <button type="submit" style={styles.submitBtn}>Add to Cloud</button>
+                  <button type="submit" style={styles.submitBtn}>{editingId ? 'Update Asset' : 'Add to Cloud'}</button>
                 </form>
               </div>
             ) : <div style={styles.guestCard}><ShieldCheck size={32} color="#10b981"/><p>Guest Dashboard</p></div>}
@@ -167,22 +165,17 @@ export default function App() {
                   <div key={maker}>
                     <div style={styles.makerHeader}><Landmark size={12}/> {maker}</div>
                     {getGroupedData()[maker].map(item => (
-                      <div key={item.id || item._id} style={styles.tableRow}>
+                      <div key={item.id} style={styles.tableRow}>
                         <div style={styles.gameInfo}>
                           <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
                           <div>
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
-                                {/* UPDATED: LIVE MARKET VALUATION FROM BACKEND[cite: 1] */}
                                 {activeTab === 'Games' && marketIntel[item.title] && (
-                                  <span style={{...styles.marketTag, cursor: 'help'}} title={`${marketIntel[item.title].description} via ${marketIntel[item.title].source}`}>
-                                    <Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}
-                                  </span>
+                                  <span style={styles.marketTag} title={marketIntel[item.title].description}><Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}</span>
                                 )}
                             </div>
-                            <small style={styles.costBreakdown}>
-                                Price: {baseVal(item).toLocaleString()} + Ship: {shipVal(item).toLocaleString()}
-                            </small>
+                            <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Del: {shipVal(item).toLocaleString()}</small>
                           </div>
                         </div>
                         <div style={styles.priceArea}>
@@ -190,7 +183,12 @@ export default function App() {
                              <b style={{fontSize:'14px'}}>Rs. {totalVal(item).toLocaleString()}</b>
                              <span style={{...styles.statusTag, color: item.status==='Shipping'?'#3b82f6':item.status==='Pending'?'#f59e0b':'#64748b'}}>{item.status}</span>
                           </div>
-                          {authStatus==='admin' && <Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id); setFormData(item); window.scrollTo(0,0);}}/>}
+                          {authStatus==='admin' && (
+                            <div style={{display:'flex', gap:'10px'}}>
+                              <Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id); setFormData(item); window.scrollTo(0,0);}}/>
+                              <Trash2 size={14} style={{cursor:'pointer', color:'#fca5a5'}} onClick={()=>handleDelete(item.id)}/>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -204,7 +202,6 @@ export default function App() {
   );
 }
 
-// STYLES MAINTAINED EXACTLY AS PROVIDED
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
@@ -212,12 +209,11 @@ const styles = {
   brand: { display: 'flex', alignItems: 'center', gap: '12px' },
   logoBox: { backgroundColor: '#0f172a', padding: '10px', borderRadius: '12px', display: 'inline-block' },
   logoText: { fontSize: '22px', fontWeight: '900', margin: 0 },
-  proBadge: { fontSize: '9px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '5px' },
   creatorTag: { fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginTop: '4px', fontWeight: '700' },
   analyticsGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '10px' },
   statBox: { backgroundColor: '#fff', padding: '15px', borderRadius: '20px', border: '1px solid #e2e8f0' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
-  statValue: { fontSize: '24px', fontWeight: '900', margin: '5px 0' },
+  statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
   statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
@@ -236,7 +232,7 @@ const styles = {
   priceAlign: { display: 'flex', flexDirection: 'column' },
   statusTag: { fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' },
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
-  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
+  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '380px', textAlign: 'center' },
   logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
   searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
@@ -248,7 +244,8 @@ const styles = {
   activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
   guestBtn: { background: 'none', border: 'none', color: '#64748b', marginTop: '10px', fontWeight: '600', cursor: 'pointer' },
   row: { display: 'flex', gap: '10px' },
-  guestCard: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', textAlign: 'center' }
+  guestCard: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', textAlign: 'center' },
+  proBadge: { fontSize: '9px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '5px' }
 };
 
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
