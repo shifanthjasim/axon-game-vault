@@ -3,15 +3,15 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, 
-  Lock, User, Archive, ShieldCheck, Edit3, Truck, Activity, Eye, Code
+  Lock, User, Archive, ShieldCheck, Edit3, Truck, Activity, Eye, Code, Globe
 } from 'lucide-react';
 
 export default function App() {
-  // --- PERSISTENT AUTHENTICATION ---[cite: 1]
+  // --- PERSISTENT AUTHENTICATION ---
   const [authStatus, setAuthStatus] = useState(() => localStorage.getItem('axon_auth') || 'logged-out');
   const [passInput, setPassInput] = useState('');
   
-  // --- CORE DATA STATES ---[cite: 1]
+  // --- CORE DATA STATES ---
   const [activeTab, setActiveTab] = useState('Games');
   const [formData, setFormData] = useState({
     title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid'
@@ -35,7 +35,13 @@ export default function App() {
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
 
-  // --- LOGIC: AUTO-FILL SEARCH ENGINE ---[cite: 1]
+  // --- LOGIC: MARKET PRICE SIMULATOR ---
+  const getMarketPrice = (title) => {
+    const prices = { "Ghost of Tsushima": 8500, "The Witcher 3": 5500, "Horizon Zero Dawn": 4000 };
+    return prices[title] || "Market Syncing...";
+  };
+
+  // --- LOGIC: AUTO-FILL SEARCH ENGINE ---
   const libraryResults = PS4_LIBRARY.filter(item => {
     if (!searchTerm) return false;
     const matches = item.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -48,17 +54,18 @@ export default function App() {
     setSearchTerm('');
   };
 
-  // --- LOGIC: NaN-PROOF ANALYTICS ---[cite: 1]
-  const calc = (item) => (parseFloat(item.price) || 0) + (parseFloat(item.delivery) || 0);
+  // --- LOGIC: NaN-PROOF ANALYTICS ---
+  const calcTotal = (item) => (parseFloat(item.price) || 0) + (parseFloat(item.delivery) || 0);
 
   const stats = {
-    games: games.reduce((acc, g) => acc + calc(g), 0),
-    hardware: hardware.reduce((acc, h) => acc + calc(h), 0),
-    shipped: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + calc(i), 0),
+    games: games.reduce((acc, g) => acc + calcTotal(g), 0),
+    hardware: hardware.reduce((acc, h) => acc + calcTotal(h), 0),
+    shipped: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + calcTotal(i), 0),
+    deliveryFees: [...games, ...hardware].reduce((acc, i) => acc + (parseFloat(i.delivery) || 0), 0),
     totalCount: games.length + hardware.length
   };
 
-  // --- LOGIC: CATEGORIZATION & SHIPPING PRIORITY ---[cite: 1]
+  // --- LOGIC: CATEGORIZATION & SHIPPING PRIORITY ---
   const getGroupedData = () => {
     const items = activeTab === 'Games' ? games : hardware;
     const sorted = [...items].sort((a, b) => {
@@ -85,7 +92,7 @@ export default function App() {
     } catch (err) { alert("Save Error"); }
   };
 
-  // --- LOGIN GATEWAY ---[cite: 1]
+  // --- LOGIN GATEWAY ---
   if (authStatus === 'logged-out') {
     return (
       <div style={styles.loginOverlay}>
@@ -108,7 +115,7 @@ export default function App() {
     <div style={styles.container}>
       <div style={styles.content}>
         
-        {/* --- HEADER (Featuring Shifanth Jasim) ---[cite: 1] */}
+        {/* --- HEADER --- */}
         <header style={styles.header}>
           <div style={styles.brand}>
             <div style={styles.logoBox}><Gamepad2 size={24} color="#fff" /></div>
@@ -120,14 +127,18 @@ export default function App() {
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}><span style={styles.statLabel}>Grand Total</span><h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.games+stats.hardware).toLocaleString()}</h2></div>
             <div style={styles.statBox}><span style={styles.statLabel}>Inventory</span><p style={styles.statDetail}>Games: Rs. {stats.games.toLocaleString()}</p><p style={styles.statDetail}>HW: Rs. {stats.hardware.toLocaleString()}</p></div>
-            <div style={styles.statBox}><span style={styles.statLabel}>Status</span><p style={{...styles.statDetail, color:'#3b82f6'}}>Shipping: Rs. {stats.shipped.toLocaleString()}</p></div>
+            <div style={styles.statBox}>
+                <span style={styles.statLabel}>Logistics</span>
+                <p style={{...styles.statDetail, color:'#3b82f6'}}>Shipped: Rs. {stats.shipped.toLocaleString()}</p>
+                <p style={{...styles.statDetail, color:'#6366f1'}}>Del. Fees: Rs. {stats.deliveryFees.toLocaleString()}</p>
+            </div>
           </div>
           <button onClick={() => {setAuthStatus('logged-out'); localStorage.removeItem('axon_auth');}} style={styles.logoutBtn}>Logout</button>
         </header>
 
         <div style={styles.mainLayout}>
           
-          {/* --- LEFT: CONTROL PANEL / GUEST DASHBOARD ---[cite: 1] */}
+          {/* --- LEFT: CONTROL PANEL --- */}
           <section>
             {authStatus === 'admin' ? (
               <div style={styles.card}>
@@ -153,26 +164,19 @@ export default function App() {
                 </form>
               </div>
             ) : (
-              /* --- REFINED GUEST DASHBOARD WITH CREATOR CREDIT ---[cite: 1] */
               <div style={styles.guestCard}>
                 <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
                 <h3 style={styles.guestTitle}>Observer Dashboard</h3>
-                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> verified digital asset collection.[cite: 1]</p>
-                
+                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> collection.</p>
                 <div style={styles.guestMetrics}>
                    <div style={styles.metricItem}><Activity size={14}/> <span>Verified: {stats.totalCount} Units</span></div>
-                   <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
-                   <div style={styles.metricItem}><Eye size={14}/> <span>Status: Read-Only</span></div>
-                </div>
-
-                <div style={styles.guestNotice}>
-                  <Lock size={12} style={{marginRight:'5px'}}/> Modifications Restricted
+                   <div style={styles.metricItem}><Code size={14}/> <span>Senior Engineer</span></div>
                 </div>
               </div>
             )}
           </section>
 
-          {/* --- RIGHT: VAULT VIEW ---[cite: 1] */}
+          {/* --- RIGHT: VAULT VIEW --- */}
           <section>
             <div style={styles.sectionHeader}><Archive size={14}/> {activeTab.toUpperCase()} DATASET</div>
             <div style={styles.tableCard}>
@@ -184,9 +188,15 @@ export default function App() {
                         <div key={item.id || item._id} style={styles.tableRow}>
                           <div style={styles.gameInfo}>
                             <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
-                            <div><b>{item.title || item.name}</b><br/><small style={{color:item.status==='Shipping'?'#3b82f6':'#64748b', fontWeight:'700'}}>{item.status}</small></div>
+                            <div>
+                                <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                    <b>{item.title || item.name}</b>
+                                    {activeTab === 'Games' && <span style={styles.marketTag}><Globe size={10}/> Rs. {getMarketPrice(item.title).toLocaleString()}</span>}
+                                </div>
+                                <small style={{color:item.status==='Shipping'?'#3b82f6':'#64748b', fontWeight:'700'}}>{item.status}</small>
+                            </div>
                           </div>
-                          <div style={styles.priceArea}><b>Rs. {calc(item).toLocaleString()}</b>{authStatus==='admin'&&<Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id); setFormData(item); window.scrollTo(0,0);}}/>}</div>
+                          <div style={styles.priceArea}><b>Rs. {calcTotal(item).toLocaleString()}</b>{authStatus==='admin'&&<Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id); setFormData(item); window.scrollTo(0,0);}}/>}</div>
                         </div>
                       ))}
                     </div>
@@ -200,7 +210,7 @@ export default function App() {
   );
 }
 
-// --- STYLES (Optimized for iPhone 14 & MacBook Pro) ---[cite: 1]
+// --- STYLES ---
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
@@ -227,7 +237,6 @@ const styles = {
   guestText: { fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 20px 0' },
   guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px' },
   metricItem: { display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontSize:'12px', fontWeight:'700', color:'#475569', backgroundColor:'#f8fafc', padding:'8px', borderRadius:'10px' },
-  guestNotice: { fontSize:'10px', fontWeight:'800', color:'#94a3b8', textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center' },
   tabHeader: { display: 'flex', gap: '5px', marginBottom: '15px', backgroundColor: '#f1f5f9', padding: '5px', borderRadius: '10px' },
   tab: { flex: 1, padding: '10px', border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor:'pointer' },
   activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
@@ -236,6 +245,7 @@ const styles = {
   tableRow: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid #f1f5f9', alignItems: 'center' },
   gameInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
   avatar: { width: '35px', height: '35px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' },
+  marketTag: { backgroundColor: '#f0fdf4', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' },
   priceArea: { display: 'flex', alignItems: 'center', gap: '15px' },
   logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
@@ -246,7 +256,8 @@ const styles = {
   form: { display:'flex', flexDirection:'column' },
   row: { display:'flex', gap:'10px' },
   sectionHeader: { fontSize: '10px', fontWeight: '900', color: '#475569', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' },
-  empty: { padding: '40px', textAlign: 'center', color: '#94a3b8' }
+  empty: { padding: '40px', textAlign: 'center', color: '#94a3b8' },
+  divider: { margin: '20px 0', color: '#cbd5e1', fontSize: '10px', fontWeight: '800' }
 };
 
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
