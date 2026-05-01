@@ -1,4 +1,41 @@
 export const PS4_LIBRARY = [
+
+  // 1. Define the library locally (removed 'export')
+
+  /* PASTE YOUR FULL 1000+ LIST HERE */ 
+  { title: "Ghost of Tsushima", studio: "Sucker Punch" },
+  { title: "Ghost of Tsushima", studio: "Sucker Punch" },
+{ title: "Ghost of Tsushima", studio: "Sucker Punch", estPrice: 8500 },
+  { title: "Red Dead Redemption 2", studio: "Rockstar Games", estPrice: 7500 },
+  { title: "The Last of Us Part II", studio: "Naughty Dog", estPrice: 6500 },
+  { title: "Grand Theft Auto V", studio: "Rockstar North", estPrice: 6000 },
+  { title: "The Witcher 3: Wild Hunt", studio: "CD Projekt Red", estPrice: 5500 },
+  { title: "Horizon Zero Dawn", studio: "Guerrilla Games", estPrice: 4500 },
+
+  // --- SPORTS & COMBAT ---
+  { title: "FIFA 23", studio: "EA Sports", estPrice: 5500 },
+  { title: "UFC 4", studio: "EA Sports", estPrice: 6500 },
+  { title: "UFC 3", studio: "EA Sports", estPrice: 4000 },
+  { title: "NBA 2K17", studio: "Visual Concepts", estPrice: 1500 }, // Legacy sports value
+  { title: "FIFA 19", studio: "EA Sports", estPrice: 2500 }, // Legacy sports value
+
+  // --- SHOOTERS & ACTION ---
+  { title: "Call of Duty: WW2", studio: "Sledgehammer Games", estPrice: 4500 },
+  { title: "Call of Duty: Black Ops 4", studio: "Treyarch", estPrice: 4000 },
+  { title: "Call of Duty: Infinite Warfare", studio: "Infinity Ward", estPrice: 3000 },
+  { title: "Battlefield 1", studio: "DICE", estPrice: 3500 },
+  { title: "Ghost Recon Breakpoint", studio: "Ubisoft", estPrice: 5500 },
+  { title: "Ghost Recon Wildlands", studio: "Ubisoft", estPrice: 3500 },
+  { title: "Watch Dogs 2", studio: "Ubisoft", estPrice: 3000 },
+  { title: "Assassin's Creed IV: Black Flag", studio: "Ubisoft", estPrice: 3000 },
+  { title: "Tom Clancy's The Division", studio: "Ubisoft", estPrice: 2500 },
+  { title: "For Honor", studio: "Ubisoft Montreal", estPrice: 2500 },
+
+  // --- LEGACY & CLASSICS ---
+  { title: "Uncharted 4: A Thief's End", studio: "Naughty Dog", estPrice: 3500 },
+  { title: "The Last of Us Remastered", studio: "Naughty Dog", estPrice: 3000 },
+  { title: "Spider-Man", studio: "Insomniac Games", estPrice: 5000 },
+
   { title: "Ghost of Tsushima", studio: "Sucker Punch", estPrice: 8500 },
   { title: "God of War", studio: "Santa Monica Studio" },
   { title: "The Last of Us Part II", studio: "Naughty Dog" },
@@ -1101,4 +1138,7 @@ export const PS4_LIBRARY = [
   { title: "Analog Stick Drift Repair Kit", studio: "Generic", type: "Accessory" },
   { title: "Thumbstick Grip Caps (Pair)", studio: "Generic", type: "Accessory" },
   { title: "Console Dust Cover (Anti-Dust)", studio: "Generic", type: "Accessory" }
+
+
 ];
+
