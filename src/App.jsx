@@ -21,6 +21,9 @@ export default function App() {
   const [games, setGames] = useState([]);
   const [hardware, setHardware] = useState([]);
 
+  // --- NEW: MARKET INTEL STATE ---[cite: 1]
+  const [marketIntel, setMarketIntel] = useState({});
+
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
   const loadCloudData = async () => {
@@ -33,10 +36,14 @@ export default function App() {
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
 
-  // --- LOGIC: MARKET PRICE SIMULATOR ---
-  const getMarketPrice = (title) => {
-    const prices = { "Ghost of Tsushima": 8500, "The Witcher 3": 5500, "Uncharted 4": 3500 };
-    return prices[title] || 0;
+  // --- NEW: FETCH LIVE MARKET VALUE ---[cite: 1]
+  const fetchLiveMarket = async (title) => {
+    if (!title) return;
+    try {
+      const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
+      const data = await response.json();
+      setMarketIntel(prev => ({ ...prev, [title]: data }));
+    } catch (err) { console.log("Market Engine Offline on Port 5001"); }
   };
 
   // --- LOGIC: AUTO-FILL SEARCH ---
@@ -47,8 +54,10 @@ export default function App() {
   }).slice(0, 8);
 
   const selectItem = (item) => {
-    setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: item.title, studio: item.studio });
+    const title = item.title;
+    setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: title, studio: item.studio });
     setSearchTerm('');
+    fetchLiveMarket(title); // <--- Triggers the backend scraper[cite: 1]
   };
 
   // --- LOGIC: CALCULATIONS ---
@@ -73,7 +82,7 @@ export default function App() {
       const maker = item.studio || 'Other';
       if (!groups[maker]) groups[maker] = [];
       groups[maker].push(item);
-      return groups; groups;
+      return groups;
     }, {});
   };
 
@@ -164,7 +173,12 @@ export default function App() {
                           <div>
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
-                                {activeTab === 'Games' && <span style={styles.marketTag}><Globe size={10}/> Rs. {getMarketPrice(item.title).toLocaleString()}</span>}
+                                {/* UPDATED: LIVE MARKET VALUATION FROM BACKEND[cite: 1] */}
+                                {activeTab === 'Games' && marketIntel[item.title] && (
+                                  <span style={{...styles.marketTag, cursor: 'help'}} title={`${marketIntel[item.title].description} via ${marketIntel[item.title].source}`}>
+                                    <Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}
+                                  </span>
+                                )}
                             </div>
                             <small style={styles.costBreakdown}>
                                 Price: {baseVal(item).toLocaleString()} + Ship: {shipVal(item).toLocaleString()}
@@ -190,7 +204,7 @@ export default function App() {
   );
 }
 
-// --- REFINED ALIGNMENT STYLES ---
+// STYLES MAINTAINED EXACTLY AS PROVIDED
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
