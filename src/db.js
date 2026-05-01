@@ -1,14 +1,13 @@
-// db.js - Cloud Version for AXON SYSTEM
-const API_BASE = '/api'; // This points to your Vercel Serverless Functions
+// db.js - Senior Engineer Cloud Implementation
+const API_BASE = '/api';
 
 export const db = {
   games: {
-    // Fetches all 24 games from MongoDB Atlas
     toArray: async () => {
       const res = await fetch(`${API_BASE}/games`);
+      if (!res.ok) throw new Error('Failed to fetch games');
       return await res.json();
     },
-    // Adds a new game to the cloud
     add: async (game) => {
       const res = await fetch(`${API_BASE}/games`, {
         method: 'POST',
@@ -19,9 +18,9 @@ export const db = {
     }
   },
   hardware: {
-    // Fetches your PS4 Slim and accessories from the cloud
     toArray: async () => {
       const res = await fetch(`${API_BASE}/hardware`);
+      if (!res.ok) throw new Error('Failed to fetch hardware');
       return await res.json();
     },
     add: async (item) => {
