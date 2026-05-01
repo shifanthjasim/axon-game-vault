@@ -21,32 +21,25 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
-  // --- REFINED: LOAD DATA & SCAN MARKET ---[cite: 1]
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-      
-      // Auto-scan for market values if local environment allows
-      if (gData.length > 0) {
-        gData.forEach(game => fetchLiveMarket(game.title));
-      }
+      // Auto-scan for market value[cite: 1]
+      gData.forEach(game => fetchLiveMarket(game.title));
     } catch (err) { console.error("Cloud Error:", err); }
   }, []);
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
 
-  // --- MARKET INTEL FETCH ---
   const fetchLiveMarket = async (title) => {
     if (!title || marketIntel[title]) return; 
     try {
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { 
-      // Silently fail if blocked by HTTPS/Mixed Content
-    }
+    } catch (err) { /* Port 5001 usually blocked on Vercel HTTPS */ }
   };
 
   const selectItem = (item) => {
@@ -55,26 +48,24 @@ export default function App() {
     fetchLiveMarket(item.title);
   };
 
-  // --- FIX: ASYNC OPTIMISTIC DELETE (Zero Freeze) ---
-  const handleDelete = (id) => {
+  // --- RE-ENGINEERED: FAIL-SAFE DELETE ---[cite: 1, 2]
+  const handleDelete = async (id) => {
+    if (!id) return;
     if (!window.confirm("Delete this asset?")) return;
     
-    // 1. Instant UI update - removes item immediately[cite: 2]
-    if (activeTab === 'Games') {
-      setGames(current => current.filter(g => (g.id || g._id) !== id));
-    } else {
-      setHardware(current => current.filter(h => (h.id || h._id) !== id));
-    }
+    // 1. UI REMOVAL (Optimistic - No await here to prevent blocking)
+    const filterFn = (items) => items.filter(item => (item.id || item._id) !== id);
+    if (activeTab === 'Games') setGames(prev => filterFn(prev));
+    else setHardware(prev => filterFn(prev));
 
-    // 2. Non-blocking background sync[cite: 1]
-    setTimeout(async () => {
-      try {
-        activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
-      } catch (err) {
-        console.error("Delete failed, re-syncing...");
-        loadCloudData(); // Re-sync if the cloud delete fails[cite: 2]
-      }
-    }, 0);
+    // 2. BACKGROUND SYNC[cite: 1]
+    try {
+      if (activeTab === 'Games') await db.games.delete(id);
+      else await db.hardware.delete(id);
+    } catch (err) {
+      console.error("Cloud sync failed. Restoring data.");
+      loadCloudData(); // Restore if cloud delete failed
+    }
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
@@ -224,6 +215,7 @@ export default function App() {
   );
 }
 
+// STYLES ARE MAINTAINED[cite: 1]
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
