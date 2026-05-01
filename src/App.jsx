@@ -3,7 +3,7 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
-  Truck, Activity, Eye, Code, Globe, Plus, DollarSign
+  Truck, Activity, Eye, Code, Globe, Plus, Lock
 } from 'lucide-react';
 
 export default function App() {
@@ -26,9 +26,8 @@ export default function App() {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-      // Auto-scan for market value[cite: 1]
-      gData.forEach(game => fetchLiveMarket(game.title));
-    } catch (err) { console.error("Cloud Error:", err); }
+      if (gData.length > 0) gData.forEach(game => fetchLiveMarket(game.title));
+    } catch (err) { console.error("Cloud Sync Error:", err); }
   }, []);
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
@@ -39,7 +38,7 @@ export default function App() {
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { /* Port 5001 usually blocked on Vercel HTTPS */ }
+    } catch (err) { /* Blocked by HTTPS on Vercel[cite: 2] */ }
   };
 
   const selectItem = (item) => {
@@ -48,24 +47,18 @@ export default function App() {
     fetchLiveMarket(item.title);
   };
 
-  // --- RE-ENGINEERED: FAIL-SAFE DELETE ---[cite: 1, 2]
-  const handleDelete = async (id) => {
-    if (!id) return;
+  // --- REPAIRED: NON-BLOCKING OPTIMISTIC DELETE ---
+  const handleDelete = (id) => {
     if (!window.confirm("Delete this asset?")) return;
     
-    // 1. UI REMOVAL (Optimistic - No await here to prevent blocking)
-    const filterFn = (items) => items.filter(item => (item.id || item._id) !== id);
-    if (activeTab === 'Games') setGames(prev => filterFn(prev));
-    else setHardware(prev => filterFn(prev));
+    if (activeTab === 'Games') setGames(prev => prev.filter(g => (g.id || g._id) !== id));
+    else setHardware(prev => prev.filter(h => (h.id || h._id) !== id));
 
-    // 2. BACKGROUND SYNC[cite: 1]
-    try {
-      if (activeTab === 'Games') await db.games.delete(id);
-      else await db.hardware.delete(id);
-    } catch (err) {
-      console.error("Cloud sync failed. Restoring data.");
-      loadCloudData(); // Restore if cloud delete failed
-    }
+    setTimeout(async () => {
+      try {
+        activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
+      } catch (err) { loadCloudData(); }
+    }, 0);
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
@@ -76,6 +69,7 @@ export default function App() {
     games: games.reduce((acc, g) => acc + totalVal(g), 0),
     hardware: hardware.reduce((acc, h) => acc + totalVal(h), 0),
     shipped: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + totalVal(i), 0),
+    totalCount: games.length + hardware.length
   };
 
   const getGroupedData = () => {
@@ -169,7 +163,20 @@ export default function App() {
                   <button type="submit" style={styles.submitBtn}>{editingId ? 'Update Asset' : 'Add to Cloud'}</button>
                 </form>
               </div>
-            ) : <div style={styles.guestCard}><ShieldCheck size={32} color="#10b981"/><p>Guest Dashboard</p></div>}
+            ) : (
+              /* --- RESTORED: FULL GUEST INFO DASHBOARD --- */
+              <div style={styles.guestCard}>
+                <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
+                <h3 style={styles.guestTitle}>Observer Dashboard</h3>
+                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> verified digital asset collection.[cite: 1]</p>
+                <div style={styles.guestMetrics}>
+                   <div style={styles.metricItem}><Activity size={14}/> <span>Verified: {stats.totalCount} Units</span></div>
+                   <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
+                   <div style={styles.metricItem}><Eye size={14}/> <span>Status: Read-Only</span></div>
+                </div>
+                <div style={styles.guestNotice}><Lock size={12} style={{marginRight:'5px'}}/> Modifications Restricted</div>
+              </div>
+            )}
           </section>
 
           <section>
@@ -215,7 +222,6 @@ export default function App() {
   );
 }
 
-// STYLES ARE MAINTAINED[cite: 1]
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
@@ -258,7 +264,13 @@ const styles = {
   activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
   guestBtn: { background: 'none', border: 'none', color: '#64748b', marginTop: '10px', fontWeight: '600', cursor: 'pointer' },
   row: { display: 'flex', gap: '10px' },
-  guestCard: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', textAlign: 'center' },
+  guestCard: { backgroundColor: '#fff', padding: '30px', borderRadius: '28px', border: '1px solid #e2e8f0', textAlign: 'center' },
+  guestIconBox: { backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '20px', display: 'inline-block', marginBottom: '15px' },
+  guestTitle: { fontSize: '18px', fontWeight: '900', color: '#1e293b', margin: '0 0 10px 0' },
+  guestText: { fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 20px 0' },
+  guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px' },
+  metricItem: { display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontSize:'12px', fontWeight:'700', color:'#475569', backgroundColor:'#f8fafc', padding:'8px', borderRadius:'10px' },
+  guestNotice: { fontSize:'10px', fontWeight:'800', color:'#94a3b8', textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center' },
   proBadge: { fontSize: '9px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '5px' }
 };
 
