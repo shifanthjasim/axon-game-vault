@@ -35,7 +35,7 @@ export const PS4_LIBRARY = [
   { title: "Uncharted 4: A Thief's End", studio: "Naughty Dog", estPrice: 3500 },
   { title: "The Last of Us Remastered", studio: "Naughty Dog", estPrice: 3000 },
   { title: "Spider-Man", studio: "Insomniac Games", estPrice: 5000 },
-
+    { title: "Tom Clancy's Ghost Recon Breakpoint", studio: "Ubisoft", estPrice: 4500 },
   { title: "Ghost of Tsushima", studio: "Sucker Punch", estPrice: 8500 },
 { title: "God of War", studio: "Santa Monica Studio", estPrice: 7500 },
   { title: "The Last of Us Part II", studio: "Naughty Dog" },
@@ -620,7 +620,7 @@ export const PS4_LIBRARY = [
   { title: "Assassin's Creed Syndicate", studio: "Ubisoft" },
   { title: "Assassin's Creed The Ezio Collection", studio: "Ubisoft" },
   { title: "Assassin's Creed III Remastered", studio: "Ubisoft" },
-  { title: "Tom Clancy's Ghost Recon Breakpoint", studio: "Ubisoft" },
+  
   { title: "Tom Clancy's The Division", studio: "Ubisoft" },
   { title: "The Saboteur (via Cloud)", studio: "Pandemic" },
   { title: "Saints Row IV: Re-Elected", studio: "Volition" },
