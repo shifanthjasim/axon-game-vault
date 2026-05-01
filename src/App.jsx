@@ -26,8 +26,7 @@ export default function App() {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-      
-      // AUTO-SCAN: Fetch market data for all existing games on load
+      // Auto-trigger market scan[cite: 2]
       gData.forEach(game => fetchLiveMarket(game.title));
     } catch (err) { console.error("Cloud Error:", err); }
   };
@@ -40,13 +39,28 @@ export default function App() {
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { console.log("Backend offline on Port 5001"); }
+    } catch (err) { console.warn("Backend 5001 unreachable from Vercel[cite: 2]"); }
   };
 
   const selectItem = (item) => {
     setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: item.title, studio: item.studio });
     setSearchTerm('');
     fetchLiveMarket(item.title);
+  };
+
+  // --- REPAIRED: OPTIMISTIC DELETE[cite: 2] ---
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this asset?")) return;
+    
+    // UI feedback first[cite: 2]
+    if (activeTab === 'Games') setGames(prev => prev.filter(g => g.id !== id));
+    else setHardware(prev => prev.filter(h => h.id !== id));
+
+    try {
+      activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
+    } catch (err) {
+      loadCloudData(); // Revert on failure[cite: 2]
+    }
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
@@ -57,7 +71,6 @@ export default function App() {
     games: games.reduce((acc, g) => acc + totalVal(g), 0),
     hardware: hardware.reduce((acc, h) => acc + totalVal(h), 0),
     shipped: [...games, ...hardware].filter(i => i.status === 'Shipping').reduce((acc, i) => acc + totalVal(i), 0),
-    totalCount: games.length + hardware.length
   };
 
   const getGroupedData = () => {
@@ -90,13 +103,6 @@ export default function App() {
     } catch (err) { alert("Save Error"); }
   };
 
-  // RESTORED: DELETE FUNCTION
-  const handleDelete = async (id) => {
-    if (!window.confirm("Permanently delete this asset?")) return;
-    activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
-    loadCloudData();
-  };
-
   if (authStatus === 'logged-out') {
     return (
       <div style={styles.loginOverlay}>
@@ -113,6 +119,8 @@ export default function App() {
       </div>
     );
   }
+
+  const groupedData = getGroupedData();
 
   return (
     <div style={styles.container}>
@@ -161,18 +169,18 @@ export default function App() {
 
           <section>
             <div style={styles.tableCard}>
-                {Object.keys(getGroupedData()).map(maker => (
+                {Object.keys(groupedData).map(maker => (
                   <div key={maker}>
                     <div style={styles.makerHeader}><Landmark size={12}/> {maker}</div>
-                    {getGroupedData()[maker].map(item => (
-                      <div key={item.id} style={styles.tableRow}>
+                    {groupedData[maker].map(item => (
+                      <div key={item.id || item._id} style={styles.tableRow}>
                         <div style={styles.gameInfo}>
                           <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
                           <div>
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
                                 {activeTab === 'Games' && marketIntel[item.title] && (
-                                  <span style={styles.marketTag} title={marketIntel[item.title].description}><Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}</span>
+                                  <span style={styles.marketTag}><Globe size={10}/> Market Intel: Rs. {marketIntel[item.title].amount.toLocaleString()}</span>
                                 )}
                             </div>
                             <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Del: {shipVal(item).toLocaleString()}</small>
@@ -184,9 +192,9 @@ export default function App() {
                              <span style={{...styles.statusTag, color: item.status==='Shipping'?'#3b82f6':item.status==='Pending'?'#f59e0b':'#64748b'}}>{item.status}</span>
                           </div>
                           {authStatus==='admin' && (
-                            <div style={{display:'flex', gap:'10px'}}>
-                              <Edit3 size={14} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id); setFormData(item); window.scrollTo(0,0);}}/>
-                              <Trash2 size={14} style={{cursor:'pointer', color:'#fca5a5'}} onClick={()=>handleDelete(item.id)}/>
+                            <div style={{display:'flex', gap:'12px'}}>
+                                <Edit3 size={15} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id || item._id); setFormData(item); window.scrollTo(0,0);}}/>
+                                <Trash2 size={15} style={{cursor:'pointer', color:'#fca5a5'}} onClick={()=>handleDelete(item.id || item._id)}/>
                             </div>
                           )}
                         </div>
@@ -232,7 +240,7 @@ const styles = {
   priceAlign: { display: 'flex', flexDirection: 'column' },
   statusTag: { fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' },
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
-  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '380px', textAlign: 'center' },
+  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
   logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
   searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
