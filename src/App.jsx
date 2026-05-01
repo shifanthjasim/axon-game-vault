@@ -21,34 +21,25 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
-  // --- REFINED: LOAD DATA & SCAN MARKET ---
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-      
-      // Auto-scan existing games for market values
-      if (gData.length > 0) {
-        gData.forEach(game => fetchLiveMarket(game.title));
-      }
+      // Auto-scan for market value[cite: 1]
+      gData.forEach(game => fetchLiveMarket(game.title));
     } catch (err) { console.error("Cloud Error:", err); }
-  }, [marketIntel]);
+  }, []);
 
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
 
-  // --- MARKET INTEL FETCH (HTTP FALLBACK) ---
   const fetchLiveMarket = async (title) => {
     if (!title || marketIntel[title]) return; 
     try {
-      // NOTE: This will only work if accessed via http://localhost:3000
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
-      if (!response.ok) throw new Error();
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { 
-      console.warn(`Market Intel for ${title} is unavailable on this connection`); 
-    }
+    } catch (err) { console.log("Backend offline/blocked[cite: 2]"); }
   };
 
   const selectItem = (item) => {
@@ -57,26 +48,16 @@ export default function App() {
     fetchLiveMarket(item.title);
   };
 
-  // --- FIXED: ASYNC OPTIMISTIC DELETE (Zero Freeze) ---
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm("Delete this asset?")) return;
     
-    // Step 1: Instant UI removal (Main Thread Unblocked)[cite: 2]
-    if (activeTab === 'Games') {
-      setGames(current => current.filter(g => (g.id || g._id) !== id));
-    } else {
-      setHardware(current => current.filter(h => (h.id || h._id) !== id));
-    }
+    // UI Feedback First - No Delay[cite: 2]
+    if (activeTab === 'Games') setGames(prev => prev.filter(g => (g.id || g._id) !== id));
+    else setHardware(prev => prev.filter(h => (h.id || h._id) !== id));
 
-    // Step 2: Background Database Cleanup[cite: 1]
-    setTimeout(async () => {
-      try {
-        activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
-      } catch (err) {
-        console.error("Cloud Delete Failed - Restoring...");
-        loadCloudData(); // Re-sync if the actual delete fails[cite: 2]
-      }
-    }, 0);
+    try {
+      activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
+    } catch (err) { loadCloudData(); }
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
@@ -92,8 +73,8 @@ export default function App() {
   const getGroupedData = () => {
     const items = activeTab === 'Games' ? games : hardware;
     const sorted = [...items].sort((a, b) => {
-      const p = { 'Shipping': 1, 'Pending': 2, 'Paid': 3 };
-      return (p[a.status] || 4) - (p[b.status] || 4);
+      const priority = { 'Shipping': 1, 'Pending': 2, 'Paid': 3 };
+      return (priority[a.status] || 4) - (priority[b.status] || 4);
     });
     return sorted.reduce((groups, item) => {
       const maker = item.studio || 'Other';
@@ -196,7 +177,7 @@ export default function App() {
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
                                 {activeTab === 'Games' && marketIntel[item.title] && (
-                                  <span style={styles.marketTag} title={marketIntel[item.title].description}><Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}</span>
+                                  <span style={styles.marketTag}><Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}</span>
                                 )}
                             </div>
                             <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Del: {shipVal(item).toLocaleString()}</small>
@@ -226,7 +207,6 @@ export default function App() {
   );
 }
 
-// STYLES MAINTAINED EXACTLY
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1200px', margin: '0 auto' },
