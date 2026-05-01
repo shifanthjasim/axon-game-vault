@@ -37,7 +37,7 @@ export const PS4_LIBRARY = [
   { title: "Spider-Man", studio: "Insomniac Games", estPrice: 5000 },
 
   { title: "Ghost of Tsushima", studio: "Sucker Punch", estPrice: 8500 },
-  { title: "God of War", studio: "Santa Monica Studio" },
+{ title: "God of War", studio: "Santa Monica Studio", estPrice: 7500 },
   { title: "The Last of Us Part II", studio: "Naughty Dog" },
   { title: "Uncharted 4: A Thief's End", studio: "Naughty Dog" },
   { title: "Spider-Man", studio: "Insomniac Games" },
