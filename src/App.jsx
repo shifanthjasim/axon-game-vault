@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from './db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, 
@@ -15,27 +14,40 @@ export default function App() {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState(null);
+  
+  // --- CLOUD DATA STATES ---
+  const [games, setGames] = useState([]);
+  const [hardware, setHardware] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // --- DATA HOOKS ---
-  const games = useLiveQuery(() => db.games.toArray()) || [];
-  const hardware = useLiveQuery(() => db.hardware.toArray()) || [];
+  // --- INITIAL DATA FETCH ---
+  const loadCloudData = async () => {
+    try {
+      setLoading(true);
+      const [gData, hData] = await Promise.all([
+        db.games.toArray(),
+        db.hardware.toArray()
+      ]);
+      setGames(gData || []);
+      setHardware(hData || []);
+    } catch (err) {
+      console.error("Cloud Fetch Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCloudData();
+  }, []);
 
   // --- DATA EXPORT SYSTEM (TXT BACKUP) ---
-  const exportToText = async () => {
-    const gamesData = await db.games.toArray();
-    const hardwareData = await db.hardware.toArray();
-    
+  const exportToText = () => {
     const backup = {
       exportDate: new Date().toLocaleString(),
       architect: "Shifanth Jasim",
-      summary: {
-        totalGames: gamesData.length,
-        totalHardware: hardwareData.length
-      },
-      data: {
-        games: gamesData,
-        hardware: hardwareData
-      }
+      summary: { totalGames: games.length, totalHardware: hardware.length },
+      data: { games, hardware }
     };
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'text/plain' });
@@ -47,33 +59,9 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // --- FINANCIAL ANALYTICS ---
-  const gameSpend = games
-    .filter(g => g.status === 'Paid' || g.status === 'Shipping')
-    .reduce((acc, g) => acc + Number(g.price || 0) + Number(g.delivery || 0), 0);
-
-  const hardwareSpend = hardware
-    .filter(h => h.status === 'Paid' || h.status === 'Shipping')
-    .reduce((acc, h) => acc + Number(h.price || 0) + Number(h.delivery || 0), 0);
-
-  // Change your data loading part to this:
-useEffect(() => {
-  const loadCloudData = async () => {
-    // This pulls everything from Atlas, regardless of status
-    const gamesData = await db.games.toArray();
-    const hardwareData = await db.hardware.toArray();
-    
-    setGames(gamesData);
-    setHardware(hardwareData);
-  };
-  
-  loadCloudData();
-}, []);
-
-// Ensure your display filter is "Status Blind"
-const displayedItems = activeTab === 'software' 
-  ? games // No .filter(g => g.status === 'Paid')
-  : hardware;
+  // --- FINANCIAL ANALYTICS (Shows all statuses) ---
+  const gameSpend = games.reduce((acc, g) => acc + Number(g.price || 0) + Number(g.delivery || 0), 0);
+  const hardwareSpend = hardware.reduce((acc, h) => acc + Number(h.price || 0) + Number(h.delivery || 0), 0);
   const grandTotal = gameSpend + hardwareSpend;
 
   // --- SEARCH ENGINE ---
@@ -92,32 +80,40 @@ const displayedItems = activeTab === 'software'
     setSearchTerm('');
   };
 
-  // --- GROUPING ---
-  const groupedVaultGames = games.filter(g => g.status === 'Paid').reduce((groups, game) => {
-    const maker = game.studio || 'Other';
+  // --- GROUPING LOGIC (Includes Paid and Shipping) ---
+  const currentInventory = activeTab === 'Games' ? games : hardware;
+  
+  const groupedData = currentInventory.reduce((groups, item) => {
+    const maker = item.studio || 'Other';
     if (!groups[maker]) groups[maker] = [];
-    groups[maker].push(game);
+    groups[maker].push(item);
     return groups;
   }, {});
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (activeTab === 'Games') {
+    try {
+      if (activeTab === 'Games') {
         if (!formData.title || !formData.price) return;
-        editingId ? await db.games.update(editingId, formData) : await db.games.add(formData);
-    } else {
+        await db.games.add(formData);
+      } else {
         if (!formData.name || !formData.price) return;
-        editingId ? await db.hardware.update(editingId, formData) : await db.hardware.add(formData);
+        await db.hardware.add(formData);
+      }
+      setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid', date: new Date().toISOString().split('T')[0] });
+      loadCloudData(); // Refresh UI after add
+    } catch (err) {
+      alert("Error saving to Cloud");
     }
-    setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid', date: new Date().toISOString().split('T')[0] });
-    setEditingId(null);
   };
+
+  if (loading) return <div style={{textAlign:'center', padding:'100px', color:'#64748b'}}>Initializing AXON Cloud...</div>;
 
   return (
     <div style={styles.container}>
       <div style={styles.content}>
         
-        {/* --- PROFESSIONAL HEADER --- */}
+        {/* --- HEADER --- */}
         <header style={styles.header}>
           <div style={styles.brand}>
             <div style={styles.logoBox}><Gamepad2 size={26} color="#fff" /></div>
@@ -152,7 +148,7 @@ const displayedItems = activeTab === 'software'
 
         <div style={styles.mainLayout}>
           
-          {/* --- LEFT: STICKY FORM PANEL --- */}
+          {/* --- LEFT: FORM --- */}
           <section>
             <div style={styles.card}>
               <div style={styles.tabHeader}>
@@ -160,23 +156,21 @@ const displayedItems = activeTab === 'software'
                 <button onClick={() => {setActiveTab('Hardware'); setSearchTerm('');}} style={activeTab === 'Hardware' ? styles.activeTab : styles.tab}>Hardware</button>
               </div>
 
-              {!editingId && (
-                <div style={styles.searchWrapper}>
-                  <div style={styles.searchBar}>
-                    <Search size={14} color="#94a3b8" />
-                    <input style={styles.searchInput} placeholder={`Search ${activeTab}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                  </div>
-                  {searchTerm && libraryResults.length > 0 && (
-                    <div style={styles.scrollDropdown}>
-                      {libraryResults.map((item, i) => (
-                        <div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}>
-                          <b>{item.title}</b><br/><small>{item.studio}</small>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              <div style={styles.searchWrapper}>
+                <div style={styles.searchBar}>
+                  <Search size={14} color="#94a3b8" />
+                  <input style={styles.searchInput} placeholder={`Search ${activeTab}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
-              )}
+                {searchTerm && libraryResults.length > 0 && (
+                  <div style={styles.scrollDropdown}>
+                    {libraryResults.map((item, i) => (
+                      <div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}>
+                        <b>{item.title}</b><br/><small>{item.studio}</small>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <form onSubmit={handleSubmit} style={styles.form}>
                 {activeTab === 'Games' ? (
@@ -191,8 +185,8 @@ const displayedItems = activeTab === 'software'
                     <div style={styles.field}>
                       <label style={styles.label}>Type</label>
                       <select style={styles.input} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                        <option value="Console">Console / Workstation</option>
-                        <option value="Accessory">Peripheral / Accessory</option>
+                        <option value="Console">Console</option>
+                        <option value="Accessory">Accessory</option>
                       </select>
                     </div>
                   </>
@@ -208,26 +202,25 @@ const displayedItems = activeTab === 'software'
                   <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                       <option value="Shipping">Paid (Currently Shipping)</option>
                       <option value="Paid">Received (In Hand)</option>
-                      <option value="Pending">Wishlist (Future Asset)</option>
+                      <option value="Pending">Wishlist</option>
                   </select>
                 </div>
 
-                <button type="submit" style={styles.submitBtn}>{editingId ? 'Update Asset' : `Add ${activeTab}`}</button>
-                {editingId && <button onClick={() => setEditingId(null)} style={styles.cancelBtn}>Cancel</button>}
+                <button type="submit" style={styles.submitBtn}>{`Add ${activeTab}`}</button>
               </form>
             </div>
           </section>
 
-          {/* --- RIGHT: INVENTORY VIEW --- */}
+          {/* --- RIGHT: VAULT --- */}
           <section style={styles.inventoryScroll}>
-            <div style={styles.sectionHeader}><Archive size={16}/> SOFTWARE VAULT</div>
-            <div style={{...styles.tableCard, borderTop: '4px solid #10b981'}}>
-                {Object.keys(groupedVaultGames).length === 0 ? <div style={styles.empty}>No entries found.</div> : 
-                  Object.keys(groupedVaultGames).map(maker => (
+            <div style={styles.sectionHeader}><Archive size={16}/> {activeTab.toUpperCase()} VAULT</div>
+            <div style={{...styles.tableCard, borderTop: activeTab === 'Games' ? '4px solid #10b981' : '4px solid #3b82f6'}}>
+                {Object.keys(groupedData).length === 0 ? <div style={styles.empty}>No entries found.</div> : 
+                  Object.keys(groupedData).map(maker => (
                     <div key={maker}>
                       <div style={styles.makerHeader}><Landmark size={12} /> {maker}</div>
-                      {groupedVaultGames[maker].map(g => (
-                        <GameRow key={g.id} game={g} onEdit={() => {setActiveTab('Games'); setEditingId(g.id); setFormData(g);}} />
+                      {groupedData[maker].map(item => (
+                        <ItemRow key={item.id} item={item} />
                       ))}
                     </div>
                   ))
@@ -241,30 +234,26 @@ const displayedItems = activeTab === 'software'
   );
 }
 
-// UI ROW COMPONENTS
-function GameRow({ game, onEdit }) {
-  const total = Number(game.price || 0) + Number(game.delivery || 0);
+function ItemRow({ item }) {
+  const total = Number(item.price || 0) + Number(item.delivery || 0);
+  const title = item.title || item.name;
   return (
     <div style={styles.tableRow}>
       <div style={styles.gameInfo}>
-        <div style={styles.avatar}>G</div>
-        <div><b>{game.title}</b><br/><small style={{color:'#64748b'}}>{game.studio}</small></div>
+        <div style={styles.avatar}>{title.charAt(0)}</div>
+        <div><b>{title}</b><br/><small style={{color:'#64748b'}}>{item.studio}</small></div>
       </div>
       <div style={styles.priceArea}>
         <div style={{textAlign:'right'}}>
             <div style={styles.priceText}>Rs. {total.toLocaleString()}</div>
-            <div style={{...styles.statusLabel, color: game.status === 'Shipping' ? '#3b82f6' : '#94a3b8'}}>{game.status}</div>
-        </div>
-        <div style={styles.actions}>
-            <button onClick={onEdit} style={styles.editBtn}><Edit3 size={14}/></button>
-            <button onClick={() => db.games.delete(game.id)} style={styles.delBtn}><Trash2 size={14}/></button>
+            <div style={{...styles.statusLabel, color: item.status === 'Shipping' ? '#3b82f6' : '#94a3b8'}}>{item.status}</div>
         </div>
       </div>
     </div>
   );
 }
 
-// STYLING SYSTEM
+// STYLES (Keep existing styles from your source)
 const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '40px 20px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1150px', margin: '0 auto' },
@@ -299,7 +288,6 @@ const styles = {
   input: { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fcfcfd' },
   row: { display: 'flex', gap: '12px', alignItems: 'flex-end' },
   submitBtn: { backgroundColor: '#0f172a', color: '#fff', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer', marginTop: '10px' },
-  cancelBtn: { backgroundColor: '#f1f5f9', color: '#64748b', padding: '12px', borderRadius: '12px', border: 'none', marginTop: '5px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', marginBottom: '15px', color: '#1e293b' },
   tableCard: { backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden' },
   makerHeader: { backgroundColor: '#f8fafc', padding: '8px 25px', fontSize: '10px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' },
@@ -309,8 +297,5 @@ const styles = {
   priceArea: { display: 'flex', alignItems: 'center', gap: '20px' },
   priceText: { fontSize: '15px', fontWeight: '800', color: '#0f172a' },
   statusLabel: { fontSize: '9px', textTransform: 'uppercase', fontWeight: '700' },
-  actions: { display: 'flex', gap: '8px' },
-  editBtn: { border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#cbd5e1' },
-  delBtn: { border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#fee2e2' },
   empty: { padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }
 };
