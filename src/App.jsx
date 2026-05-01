@@ -132,7 +132,7 @@ export default function App() {
           
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}>
-              <span style={styles.statLabel}>Financial Assets</span>
+              <span style={styles.statLabel}>PlayStation 4 Library Value</span>
               <h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {stats.totalValue.toLocaleString()}</h2>
               <p style={{...styles.statDetail, color:'#3b82f6'}}>Logistics: Rs. {stats.shippedValue.toLocaleString()}</p>
             </div>
