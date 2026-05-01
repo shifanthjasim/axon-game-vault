@@ -114,7 +114,7 @@ export default function App() {
             <div style={styles.logoBox}><Gamepad2 size={24} color="#fff" /></div>
             <div>
               <h1 style={styles.logoText}>GameVault <span style={styles.proBadge}>PRO</span></h1>
-              <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{color: '#0f172a'}}>SHIFANTH JASIM</span></p>
+              <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{color: '#0f172a'}}>SENIOR SOFTWARE ENGINEER SHIFANTH JASIM</span></p>
             </div>
           </div>
           <div style={styles.analyticsGrid}>
