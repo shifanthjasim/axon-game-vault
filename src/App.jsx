@@ -3,23 +3,25 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, 
-  Truck, Edit3, Archive, ShoppingCart, 
-  Clock, Monitor, Headphones, Download
+  Lock, User, Archive, Download, ShieldCheck, Edit3
 } from 'lucide-react';
 
 export default function App() {
+  // --- AUTHENTICATION STATE ---
+  const [authStatus, setAuthStatus] = useState('logged-out'); // 'logged-out', 'admin', 'guest'
+  const [passInput, setPassInput] = useState('');
+
+  // --- CORE APP STATE ---
   const [activeTab, setActiveTab] = useState('Games');
   const [formData, setFormData] = useState({
     title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid', date: new Date().toISOString().split('T')[0]
   });
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // --- CLOUD DATA STATES ---
   const [games, setGames] = useState([]);
   const [hardware, setHardware] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- INITIAL DATA FETCH ---
+  // --- CLOUD SYNC ENGINE ---
   const loadCloudData = async () => {
     try {
       setLoading(true);
@@ -30,55 +32,32 @@ export default function App() {
       setGames(gData || []);
       setHardware(hData || []);
     } catch (err) {
-      console.error("Cloud Fetch Error:", err);
+      console.error("AXON Cloud Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCloudData();
-  }, []);
+    if (authStatus !== 'logged-out') loadCloudData();
+  }, [authStatus]);
 
-  // --- DATA EXPORT SYSTEM ---
-  const exportToText = () => {
-    const backup = {
-      exportDate: new Date().toLocaleString(),
-      architect: "Shifanth Jasim",
-      summary: { totalGames: games.length, totalHardware: hardware.length },
-      data: { games, hardware }
-    };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `AXON_Backup_${new Date().toISOString().split('T')[0]}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+  // --- LOGIN LOGIC ---
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (passInput === '1234') { 
+      setAuthStatus('admin');
+    } else {
+      alert("Unauthorized Access Attempt");
+    }
   };
 
-  // --- ANALYTICS (Includes All Statuses) ---
+  // --- FINANCIAL ANALYTICS ---
   const gameSpend = games.reduce((acc, g) => acc + Number(g.price || 0) + Number(g.delivery || 0), 0);
   const hardwareSpend = hardware.reduce((acc, h) => acc + Number(h.price || 0) + Number(h.delivery || 0), 0);
   const grandTotal = gameSpend + hardwareSpend;
 
-  // --- SEARCH ENGINE ---
-  const libraryResults = PS4_LIBRARY.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
-    if (activeTab === 'Games') return matchesSearch && !item.type;
-    return matchesSearch && item.type;
-  }).slice(0, 15);
-
-  const selectItem = (item) => {
-    if (activeTab === 'Games') {
-      setFormData({ ...formData, title: item.title, studio: item.studio });
-    } else {
-      setFormData({ ...formData, name: item.title, studio: item.studio, type: item.type });
-    }
-    setSearchTerm('');
-  };
-
-  // --- VAULT GROUPING ---
+  // --- VAULT LOGIC ---
   const currentInventory = activeTab === 'Games' ? games : hardware;
   const groupedData = currentInventory.reduce((groups, item) => {
     const maker = item.studio || 'Other';
@@ -89,138 +68,131 @@ export default function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (authStatus !== 'admin') return;
     try {
       if (activeTab === 'Games') {
-        if (!formData.title || !formData.price) return;
         await db.games.add(formData);
       } else {
-        if (!formData.name || !formData.price) return;
         await db.hardware.add(formData);
       }
       setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid', date: new Date().toISOString().split('T')[0] });
       loadCloudData();
     } catch (err) {
-      alert("Cloud Save Failed");
+      alert("Cloud Save Error");
     }
   };
 
-  if (loading) return <div style={styles.loading}>Initializing AXON Cloud...</div>;
+  // --- RENDER: LOGIN GATEWAY ---
+  if (authStatus === 'logged-out') {
+    return (
+      <div style={styles.loginOverlay}>
+        <div style={styles.loginCard}>
+          <div style={styles.logoBox}><Gamepad2 size={40} color="#fff" /></div>
+          <h1 style={styles.logoText}>AXON <span style={styles.proBadge}>GATEWAY</span></h1>
+          <p style={styles.creatorTag}>System Architect: Shifanth Jasim</p>
+          
+          <form onSubmit={handleLogin} style={{width:'100%', marginTop:'25px'}}>
+            <label style={styles.label}>Access Code</label>
+            <input 
+              type="password" 
+              style={styles.input} 
+              placeholder="••••" 
+              value={passInput} 
+              onChange={e => setPassInput(e.target.value)} 
+            />
+            <button type="submit" style={styles.submitBtn}>Unlock Admin Access</button>
+          </form>
+
+          <div style={styles.divider}><span>SECURE GUEST ACCESS</span></div>
+          
+          <button onClick={() => setAuthStatus('guest')} style={styles.guestBtn}>
+            <User size={16} /> View Collection (Read-Only)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) return <div style={styles.loading}>Decrypting Cloud Vault...</div>;
 
   return (
     <div style={styles.container}>
       <div style={styles.content}>
         
-        {/* --- HEADER --- */}
+        {/* --- DYNAMIC HEADER --- */}
         <header style={styles.header}>
           <div style={styles.brand}>
             <div style={styles.logoBox}><Gamepad2 size={26} color="#fff" /></div>
             <div>
               <h1 style={styles.logoText}>GameVault <span style={styles.proBadge}>PRO</span></h1>
-              <p style={styles.creatorTag}>System Architect: <span style={{color: '#0f172a', fontWeight: '700'}}>Senior Engineer Shifanth Jasim</span></p>
+              <p style={styles.creatorTag}>MODE: {authStatus.toUpperCase()}</p>
             </div>
           </div>
 
           <div style={styles.headerRight}>
-            <button onClick={exportToText} style={styles.backupBtn}>
-              <Download size={14} /> Backup Data (.txt)
-            </button>
             <div style={styles.grandTotalCard}>
-              <div style={{borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginBottom: '10px'}}>
-                  <p style={styles.statLabel}>Grand Total Investment</p>
-                  <h2 style={styles.statValue}>Rs. {grandTotal.toLocaleString()}</h2>
-              </div>
-              <div style={styles.miniStatsRow}>
-                  <div style={styles.miniStatBox}>
-                      <span style={styles.miniStatLabel}>Games</span>
-                      <span style={styles.miniStatValue}>Rs. {gameSpend.toLocaleString()}</span>
-                  </div>
-                  <div style={styles.miniStatBox}>
-                      <span style={styles.miniStatLabel}>Hardware</span>
-                      <span style={styles.miniStatValue}>Rs. {hardwareSpend.toLocaleString()}</span>
-                  </div>
-              </div>
+                <p style={styles.statLabel}>Vault Valuation</p>
+                <h2 style={styles.statValue}>Rs. {grandTotal.toLocaleString()}</h2>
+                <div style={styles.miniStatsRow}>
+                  <span>Games: Rs. {gameSpend.toLocaleString()}</span>
+                  <span>Hardware: Rs. {hardwareSpend.toLocaleString()}</span>
+                </div>
             </div>
+            <button onClick={() => setAuthStatus('logged-out')} style={styles.logoutBtn}>Logout</button>
           </div>
         </header>
 
         <div style={styles.mainLayout}>
           
-          {/* --- LEFT: FORM --- */}
+          {/* --- LEFT: CONTROL PANEL --- */}
           <section>
-            <div style={styles.card}>
-              <div style={styles.tabHeader}>
-                <button onClick={() => setActiveTab('Games')} style={activeTab === 'Games' ? styles.activeTab : styles.tab}>Software</button>
-                <button onClick={() => setActiveTab('Hardware')} style={activeTab === 'Hardware' ? styles.activeTab : styles.tab}>Hardware</button>
-              </div>
-
-              <div style={styles.searchWrapper}>
-                <div style={styles.searchBar}>
-                  <Search size={14} color="#94a3b8" />
-                  <input style={styles.searchInput} placeholder={`Search ${activeTab}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            {authStatus === 'admin' ? (
+              <div style={styles.card}>
+                <div style={styles.tabHeader}>
+                  <button onClick={() => setActiveTab('Games')} style={activeTab === 'Games' ? styles.activeTab : styles.tab}>Software</button>
+                  <button onClick={() => setActiveTab('Hardware')} style={activeTab === 'Hardware' ? styles.activeTab : styles.tab}>Hardware</button>
                 </div>
-                {searchTerm && libraryResults.length > 0 && (
-                  <div style={styles.scrollDropdown}>
-                    {libraryResults.map((item, i) => (
-                      <div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}>
-                        <b>{item.title}</b><br/><small>{item.studio}</small>
-                      </div>
-                    ))}
+                <form onSubmit={handleSubmit} style={styles.form}>
+                  <input style={styles.input} placeholder="Title / Name" value={activeTab === 'Games' ? formData.title : formData.name} onChange={e => setFormData({...formData, [activeTab === 'Games' ? 'title' : 'name']: e.target.value})} />
+                  <div style={styles.row}>
+                    <input style={styles.input} placeholder="Price" type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                    <input style={styles.input} placeholder="Ship" type="number" value={formData.delivery} onChange={e => setFormData({...formData, delivery: e.target.value})} />
                   </div>
-                )}
-              </div>
-
-              <form onSubmit={handleSubmit} style={styles.form}>
-                {activeTab === 'Games' ? (
-                  <>
-                    <div style={styles.field}><label style={styles.label}>Title</label><input style={styles.input} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
-                    <div style={styles.field}><label style={styles.label}>Studio</label><input style={styles.input} value={formData.studio} onChange={e => setFormData({...formData, studio: e.target.value})} /></div>
-                  </>
-                ) : (
-                  <>
-                    <div style={styles.field}><label style={styles.label}>Hardware Name</label><input style={styles.input} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-                    <div style={styles.field}><label style={styles.label}>Manufacturer</label><input style={styles.input} value={formData.studio} onChange={e => setFormData({...formData, studio: e.target.value})} /></div>
-                  </>
-                )}
-                
-                <div style={styles.row}>
-                  <div style={styles.field}><label style={styles.label}>Unit Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
-                  <div style={styles.field}><label style={styles.label}>Shipping</label><input style={styles.input} type="number" value={formData.delivery} onChange={e => setFormData({...formData, delivery: e.target.value})} /></div>
-                </div>
-
-                <div style={styles.field}>
-                  <label style={styles.label}>Logistics Status</label>
                   <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                      <option value="Shipping">Paid (Shipping)</option>
-                      <option value="Paid">Received (In Hand)</option>
+                      <option value="Paid">Received</option>
+                      <option value="Shipping">Shipping</option>
                       <option value="Pending">Wishlist</option>
                   </select>
-                </div>
-
-                <button type="submit" style={styles.submitBtn}>{`Add ${activeTab}`}</button>
-              </form>
-            </div>
+                  <button type="submit" style={styles.submitBtn}>Add to Cloud</button>
+                </form>
+              </div>
+            ) : (
+              <div style={styles.guestNotice}>
+                <ShieldCheck size={40} color="#10b981" />
+                <h3>Guest Mode Active</h3>
+                <p>Viewing authorized collection only.</p>
+              </div>
+            )}
           </section>
 
-          {/* --- RIGHT: VAULT --- */}
+          {/* --- RIGHT: VAULT VIEW --- */}
           <section>
-            <div style={styles.sectionHeader}><Archive size={16}/> {activeTab.toUpperCase()} VAULT</div>
-            <div style={{...styles.tableCard, borderTop: activeTab === 'Games' ? '4px solid #10b981' : '4px solid #3b82f6'}}>
-                {Object.keys(groupedData).length === 0 ? <div style={styles.empty}>No entries found.</div> : 
+            <div style={styles.sectionHeader}><Archive size={14}/> {activeTab.toUpperCase()} DATASET</div>
+            <div style={styles.tableCard}>
+                {Object.keys(groupedData).length === 0 ? <div style={styles.empty}>Vault Empty</div> : 
                   Object.keys(groupedData).map(maker => (
                     <div key={maker}>
-                      <div style={styles.makerHeader}><Landmark size={12} /> {maker}</div>
+                      <div style={styles.makerHeader}>{maker}</div>
                       {groupedData[maker].map(item => (
                         <div key={item.id} style={styles.tableRow}>
                           <div style={styles.gameInfo}>
                             <div style={styles.avatar}>{(item.title || item.name).charAt(0)}</div>
-                            <div><b>{item.title || item.name}</b><br/><small>{item.studio}</small></div>
-                          </div>
-                          <div style={styles.priceArea}>
-                            <div style={{textAlign:'right'}}>
-                                <div style={styles.priceText}>Rs. {(Number(item.price) + Number(item.delivery)).toLocaleString()}</div>
-                                <div style={{...styles.statusLabel, color: item.status === 'Shipping' ? '#3b82f6' : '#94a3b8'}}>{item.status}</div>
+                            <div>
+                                <b style={{fontSize:'14px'}}>{item.title || item.name}</b><br/>
+                                <small style={{color:'#64748b', fontSize:'11px'}}>{item.status}</small>
                             </div>
                           </div>
+                          <div style={styles.priceText}>Rs. {(Number(item.price) + Number(item.delivery)).toLocaleString()}</div>
                         </div>
                       ))}
                     </div>
@@ -235,65 +207,56 @@ export default function App() {
   );
 }
 
-// --- RESPONSIVE MOBILE-FIRST STYLES ---
+// --- RESPONSIVE STYLING SYSTEM ---
 const styles = {
+  loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
+  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' },
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
-  content: { maxWidth: '1150px', margin: '0 auto' },
-  loading: { textAlign: 'center', padding: '100px', color: '#64748b', fontSize: '14px', fontWeight: '600' },
+  content: { maxWidth: '1100px', margin: '0 auto' },
+  loading: { textAlign: 'center', padding: '100px', color: '#64748b', fontWeight: '600' },
   header: { display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' },
   headerRight: { display: 'flex', flexDirection: 'column', gap: '15px' },
   brand: { display: 'flex', alignItems: 'center', gap: '15px' },
-  logoBox: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '15px' },
-  logoText: { fontSize: '24px', fontWeight: '900', letterSpacing: '-1px', margin: 0 },
-  creatorTag: { fontSize: '10px', color: '#64748b', marginTop: '4px', textTransform: 'uppercase', margin: 0 },
-  proBadge: { fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '6px' },
-  grandTotalCard: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0', width: '100%', boxSizing: 'border-box' },
-  statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', margin: 0 },
-  statValue: { fontSize: '28px', fontWeight: '900', color: '#10b981', margin: 0 },
-  miniStatsRow: { display: 'flex', justifyContent: 'flex-start', gap: '20px', marginTop: '10px' },
-  miniStatBox: { display: 'flex', flexDirection: 'column' },
-  miniStatLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8' },
-  miniStatValue: { fontSize: '14px', fontWeight: '700', color: '#1e293b' },
-  backupBtn: { backgroundColor: '#fff', color: '#64748b', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' },
+  logoBox: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '15px', display: 'inline-block' },
+  logoText: { fontSize: '22px', fontWeight: '900', margin: 0, letterSpacing: '-1px' },
+  proBadge: { fontSize: '9px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '5px' },
+  creatorTag: { fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '4px 0', letterSpacing: '0.5px' },
+  input: { width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '16px', boxSizing: 'border-box' },
+  submitBtn: { width: '100%', backgroundColor: '#0f172a', color: '#fff', padding: '15px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer' },
+  guestBtn: { width: '100%', backgroundColor: '#f8fafc', color: '#475569', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
+  logoutBtn: { backgroundColor: '#fff', color: '#ef4444', padding: '10px 20px', borderRadius: '10px', border: '1px solid #fee2e2', fontSize: '12px', fontWeight: '700', cursor: 'pointer' },
+  divider: { margin: '20px 0', color: '#cbd5e1', fontSize: '10px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '25px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
-  tabHeader: { display: 'flex', gap: '6px', marginBottom: '20px', backgroundColor: '#f1f5f9', padding: '5px', borderRadius: '12px' },
-  tab: { flex: 1, padding: '10px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', borderRadius: '8px', fontSize: '13px', fontWeight: '600' },
-  activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', cursor: 'pointer', borderRadius: '8px', fontSize: '13px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
-  searchWrapper: { position: 'relative', marginBottom: '15px' },
-  searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
-  searchInput: { border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '16px' },
-  scrollDropdown: { position: 'absolute', top: '55px', width: '100%', maxHeight: '200px', overflowY: 'auto', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 100 },
-  dropdownItem: { padding: '12px', fontSize: '12px', borderBottom: '1px solid #f1f5f9' },
-  form: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  field: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
-  input: { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '16px', outline: 'none', boxSizing: 'border-box' },
+  tabHeader: { display: 'flex', gap: '5px', marginBottom: '20px', backgroundColor: '#f1f5f9', padding: '5px', borderRadius: '12px' },
+  tab: { flex: 1, padding: '10px', border: 'none', backgroundColor: 'transparent', fontSize: '13px', fontWeight: '600' },
+  activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
+  form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   row: { display: 'flex', gap: '10px' },
-  submitBtn: { backgroundColor: '#0f172a', color: '#fff', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer' },
-  sectionHeader: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '900', color: '#1e293b', marginBottom: '15px' },
-  tableCard: { backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0' },
-  makerHeader: { backgroundColor: '#f8fafc', padding: '10px 20px', fontSize: '10px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' },
-  tableRow: { display: 'flex', flexDirection: 'column', padding: '15px 20px', borderBottom: '1px solid #f1f5f9', gap: '10px' },
-  gameInfo: { display: 'flex', alignItems: 'center', gap: '15px' },
-  avatar: { width: '35px', height: '35px', backgroundColor: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '800' },
-  priceArea: { display: 'flex', justifyContent: 'flex-end' },
-  priceText: { fontSize: '16px', fontWeight: '800', color: '#0f172a' },
-  statusLabel: { fontSize: '9px', textTransform: 'uppercase', fontWeight: '700' },
+  tableCard: { backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' },
+  makerHeader: { backgroundColor: '#f8fafc', padding: '10px 20px', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' },
+  tableRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #f1f5f9' },
+  gameInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
+  avatar: { width: '32px', height: '32px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' },
+  priceText: { fontSize: '15px', fontWeight: '800', color: '#1e293b' },
+  grandTotalCard: { backgroundColor: '#fff', padding: '15px 20px', borderRadius: '20px', border: '1px solid #e2e8f0', width: '100%', boxSizing: 'border-box' },
+  statValue: { color: '#10b981', margin: '5px 0', fontSize: '24px', fontWeight: '900' },
+  statLabel: { fontSize: '9px', color: '#94a3b8', textTransform: 'uppercase', margin: 0, fontWeight: '800' },
+  miniStatsRow: { display: 'flex', gap: '15px', fontSize: '10px', color: '#64748b', fontWeight: '600' },
+  guestNotice: { backgroundColor: '#fff', padding: '30px', borderRadius: '24px', textAlign: 'center', border: '1px solid #e2e8f0' },
+  sectionHeader: { fontSize: '10px', fontWeight: '900', color: '#475569', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' },
   empty: { padding: '40px', textAlign: 'center', color: '#94a3b8' }
 };
 
-// --- DESKTOP OVERRIDES ---
+// --- DESKTOP REFINEMENT (Laptop View) ---
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
   styles.header.flexDirection = 'row';
   styles.header.justifyContent = 'space-between';
   styles.headerRight.flexDirection = 'row';
-  styles.headerRight.alignItems = 'flex-start';
-  styles.grandTotalCard.width = '320px';
+  styles.headerRight.alignItems = 'center';
+  styles.grandTotalCard.width = '350px';
   styles.grandTotalCard.textAlign = 'right';
   styles.miniStatsRow.justifyContent = 'flex-end';
   styles.mainLayout.display = 'grid';
-  styles.mainLayout.gridTemplateColumns = '380px 1fr';
-  styles.tableRow.flexDirection = 'row';
-  styles.tableRow.justifyContent = 'space-between';
+  styles.mainLayout.gridTemplateColumns = '350px 1fr';
 }
