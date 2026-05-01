@@ -3,7 +3,7 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
-  Truck, Activity, Eye, Code, Globe, Plus, Lock, RefreshCcw
+  Truck, Activity, Eye, Code, Globe, Plus, Lock, Calendar
 } from 'lucide-react';
 
 export default function App() {
@@ -17,36 +17,26 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [games, setGames] = useState([]);
   const [hardware, setHardware] = useState([]);
-  const [marketIntel, setMarketIntel] = useState({});
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
-
-  // --- MARKET INTEL FETCH ---
-  const fetchLiveMarket = async (title) => {
-    if (!title || marketIntel[title]) return; 
-    try {
-      const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
-      const data = await response.json();
-      setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { console.warn("Market Engine Offline on Port 5001"); }
-  };
 
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
       setGames(gData || []);
       setHardware(hData || []);
-      // Auto-scan existing games for valuations on load
-      if (gData.length > 0) gData.forEach(game => fetchLiveMarket(game.title));
     } catch (err) { console.error("Cloud Sync Error:", err); }
-  }, [marketIntel]);
+  }, []);
 
-  useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
+  useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
 
   const selectItem = (item) => {
-    setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: item.title, studio: item.studio });
+    setFormData({ 
+      ...formData, 
+      [activeTab === 'Games'?'title':'name']: item.title, 
+      studio: item.studio 
+    });
     setSearchTerm('');
-    fetchLiveMarket(item.title);
   };
 
   const handleDelete = (id) => {
@@ -58,6 +48,12 @@ export default function App() {
         activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
       } catch (err) { loadCloudData(); }
     }, 0);
+  };
+
+  // Helper to find manual price from library
+  const getManualEst = (title) => {
+    const item = PS4_LIBRARY.find(i => i.title === title);
+    return item ? item.estPrice : 0;
   };
 
   const baseVal = (i) => parseFloat(i.price) || 0;
@@ -91,7 +87,7 @@ export default function App() {
     try {
       const payload = { ...formData, price: Number(formData.price) || 0, delivery: Number(formData.delivery) || 0 };
       if (editingId) {
-        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.update(editingId, payload);
+        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.add(payload);
       } else {
         activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
       }
@@ -134,10 +130,8 @@ export default function App() {
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}><span style={styles.statLabel}>Grand Total</span><h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.games+stats.hardware).toLocaleString()}</h2></div>
             <div style={styles.statBox}>
-              <span style={styles.statLabel}>Market Valuation</span>
-              <button onClick={() => games.forEach(g => fetchLiveMarket(g.title))} style={styles.scanBtn}>
-                <RefreshCcw size={12}/> Scan Market
-              </button>
+              <span style={styles.statLabel}>Market Intel</span>
+              <div style={styles.dateTag}><Calendar size={12}/> Verified: May 1, 2026</div>
             </div>
           </div>
           <button onClick={() => {setAuthStatus('logged-out'); localStorage.removeItem('axon_auth');}} style={styles.logoutBtn}>Logout</button>
@@ -171,7 +165,7 @@ export default function App() {
               <div style={styles.guestCard}>
                 <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
                 <h3 style={styles.guestTitle}>Observer Dashboard</h3>
-                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> collection.</p>
+                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> verified collection.</p>
                 <div style={styles.guestMetrics}>
                    <div style={styles.metricItem}><Activity size={14}/> <span>Verified: {stats.totalCount} Units</span></div>
                    <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
@@ -194,9 +188,9 @@ export default function App() {
                           <div>
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
-                                {activeTab === 'Games' && marketIntel[item.title] && (
-                                  <span style={styles.marketTag} title={`${marketIntel[item.title].description} via ${marketIntel[item.title].source}`}>
-                                    <Globe size={10}/> Est: Rs. {marketIntel[item.title].amount.toLocaleString()}
+                                {getManualEst(item.title || item.name) > 0 && (
+                                  <span style={styles.marketTag}>
+                                    <Globe size={10}/> Resell: Rs. {getManualEst(item.title || item.name).toLocaleString()}
                                   </span>
                                 )}
                             </div>
@@ -239,8 +233,7 @@ const styles = {
   statBox: { backgroundColor: '#fff', padding: '15px', borderRadius: '20px', border: '1px solid #e2e8f0' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
-  statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
-  scanBtn: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '5px 10px', fontSize: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' },
+  dateTag: { backgroundColor: '#f8fafc', color: '#64748b', padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '5px' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display:'block' },
@@ -258,7 +251,7 @@ const styles = {
   priceAlign: { display: 'flex', flexDirection: 'column' },
   statusTag: { fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' },
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
-  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
+  loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '380px', textAlign: 'center' },
   logoutBtn: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '11px', fontWeight: '700', cursor:'pointer' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
   searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },

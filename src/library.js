@@ -1,5 +1,5 @@
 export const PS4_LIBRARY = [
-  { title: "Ghost of Tsushima", studio: "Sucker Punch" },
+  { title: "Ghost of Tsushima", studio: "Sucker Punch", estPrice: 8500 },
   { title: "God of War", studio: "Santa Monica Studio" },
   { title: "The Last of Us Part II", studio: "Naughty Dog" },
   { title: "Uncharted 4: A Thief's End", studio: "Naughty Dog" },
