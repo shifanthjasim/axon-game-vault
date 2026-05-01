@@ -13,7 +13,6 @@ export default function App() {
     title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid', date: new Date().toISOString().split('T')[0]
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingId, setEditingId] = useState(null);
   
   // --- CLOUD DATA STATES ---
   const [games, setGames] = useState([]);
@@ -41,7 +40,7 @@ export default function App() {
     loadCloudData();
   }, []);
 
-  // --- DATA EXPORT SYSTEM (TXT BACKUP) ---
+  // --- DATA EXPORT SYSTEM ---
   const exportToText = () => {
     const backup = {
       exportDate: new Date().toLocaleString(),
@@ -49,7 +48,6 @@ export default function App() {
       summary: { totalGames: games.length, totalHardware: hardware.length },
       data: { games, hardware }
     };
-
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -59,7 +57,7 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // --- FINANCIAL ANALYTICS (Shows all statuses) ---
+  // --- ANALYTICS (Includes All Statuses) ---
   const gameSpend = games.reduce((acc, g) => acc + Number(g.price || 0) + Number(g.delivery || 0), 0);
   const hardwareSpend = hardware.reduce((acc, h) => acc + Number(h.price || 0) + Number(h.delivery || 0), 0);
   const grandTotal = gameSpend + hardwareSpend;
@@ -80,9 +78,8 @@ export default function App() {
     setSearchTerm('');
   };
 
-  // --- GROUPING LOGIC (Includes Paid and Shipping) ---
+  // --- VAULT GROUPING ---
   const currentInventory = activeTab === 'Games' ? games : hardware;
-  
   const groupedData = currentInventory.reduce((groups, item) => {
     const maker = item.studio || 'Other';
     if (!groups[maker]) groups[maker] = [];
@@ -101,13 +98,13 @@ export default function App() {
         await db.hardware.add(formData);
       }
       setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid', date: new Date().toISOString().split('T')[0] });
-      loadCloudData(); // Refresh UI after add
+      loadCloudData();
     } catch (err) {
-      alert("Error saving to Cloud");
+      alert("Cloud Save Failed");
     }
   };
 
-  if (loading) return <div style={{textAlign:'center', padding:'100px', color:'#64748b'}}>Initializing AXON Cloud...</div>;
+  if (loading) return <div style={styles.loading}>Initializing AXON Cloud...</div>;
 
   return (
     <div style={styles.container}>
@@ -152,8 +149,8 @@ export default function App() {
           <section>
             <div style={styles.card}>
               <div style={styles.tabHeader}>
-                <button onClick={() => {setActiveTab('Games'); setSearchTerm('');}} style={activeTab === 'Games' ? styles.activeTab : styles.tab}>Software</button>
-                <button onClick={() => {setActiveTab('Hardware'); setSearchTerm('');}} style={activeTab === 'Hardware' ? styles.activeTab : styles.tab}>Hardware</button>
+                <button onClick={() => setActiveTab('Games')} style={activeTab === 'Games' ? styles.activeTab : styles.tab}>Software</button>
+                <button onClick={() => setActiveTab('Hardware')} style={activeTab === 'Hardware' ? styles.activeTab : styles.tab}>Hardware</button>
               </div>
 
               <div style={styles.searchWrapper}>
@@ -182,13 +179,6 @@ export default function App() {
                   <>
                     <div style={styles.field}><label style={styles.label}>Hardware Name</label><input style={styles.input} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
                     <div style={styles.field}><label style={styles.label}>Manufacturer</label><input style={styles.input} value={formData.studio} onChange={e => setFormData({...formData, studio: e.target.value})} /></div>
-                    <div style={styles.field}>
-                      <label style={styles.label}>Type</label>
-                      <select style={styles.input} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                        <option value="Console">Console</option>
-                        <option value="Accessory">Accessory</option>
-                      </select>
-                    </div>
                   </>
                 )}
                 
@@ -200,7 +190,7 @@ export default function App() {
                 <div style={styles.field}>
                   <label style={styles.label}>Logistics Status</label>
                   <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-                      <option value="Shipping">Paid (Currently Shipping)</option>
+                      <option value="Shipping">Paid (Shipping)</option>
                       <option value="Paid">Received (In Hand)</option>
                       <option value="Pending">Wishlist</option>
                   </select>
@@ -212,7 +202,7 @@ export default function App() {
           </section>
 
           {/* --- RIGHT: VAULT --- */}
-          <section style={styles.inventoryScroll}>
+          <section>
             <div style={styles.sectionHeader}><Archive size={16}/> {activeTab.toUpperCase()} VAULT</div>
             <div style={{...styles.tableCard, borderTop: activeTab === 'Games' ? '4px solid #10b981' : '4px solid #3b82f6'}}>
                 {Object.keys(groupedData).length === 0 ? <div style={styles.empty}>No entries found.</div> : 
@@ -220,7 +210,18 @@ export default function App() {
                     <div key={maker}>
                       <div style={styles.makerHeader}><Landmark size={12} /> {maker}</div>
                       {groupedData[maker].map(item => (
-                        <ItemRow key={item.id} item={item} />
+                        <div key={item.id} style={styles.tableRow}>
+                          <div style={styles.gameInfo}>
+                            <div style={styles.avatar}>{(item.title || item.name).charAt(0)}</div>
+                            <div><b>{item.title || item.name}</b><br/><small>{item.studio}</small></div>
+                          </div>
+                          <div style={styles.priceArea}>
+                            <div style={{textAlign:'right'}}>
+                                <div style={styles.priceText}>Rs. {(Number(item.price) + Number(item.delivery)).toLocaleString()}</div>
+                                <div style={{...styles.statusLabel, color: item.status === 'Shipping' ? '#3b82f6' : '#94a3b8'}}>{item.status}</div>
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ))
@@ -234,68 +235,65 @@ export default function App() {
   );
 }
 
-function ItemRow({ item }) {
-  const total = Number(item.price || 0) + Number(item.delivery || 0);
-  const title = item.title || item.name;
-  return (
-    <div style={styles.tableRow}>
-      <div style={styles.gameInfo}>
-        <div style={styles.avatar}>{title.charAt(0)}</div>
-        <div><b>{title}</b><br/><small style={{color:'#64748b'}}>{item.studio}</small></div>
-      </div>
-      <div style={styles.priceArea}>
-        <div style={{textAlign:'right'}}>
-            <div style={styles.priceText}>Rs. {total.toLocaleString()}</div>
-            <div style={{...styles.statusLabel, color: item.status === 'Shipping' ? '#3b82f6' : '#94a3b8'}}>{item.status}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// STYLES (Keep existing styles from your source)
+// --- RESPONSIVE MOBILE-FIRST STYLES ---
 const styles = {
-  container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '40px 20px', fontFamily: '"Inter", sans-serif' },
+  container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', fontFamily: '"Inter", sans-serif' },
   content: { maxWidth: '1150px', margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' },
-  headerRight: { display: 'flex', alignItems: 'flex-start', gap: '20px' },
+  loading: { textAlign: 'center', padding: '100px', color: '#64748b', fontSize: '14px', fontWeight: '600' },
+  header: { display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' },
+  headerRight: { display: 'flex', flexDirection: 'column', gap: '15px' },
   brand: { display: 'flex', alignItems: 'center', gap: '15px' },
   logoBox: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '15px' },
   logoText: { fontSize: '24px', fontWeight: '900', letterSpacing: '-1px', margin: 0 },
-  creatorTag: { fontSize: '10px', color: '#64748b', marginTop: '4px', letterSpacing: '0.5px', textTransform: 'uppercase', margin: 0 },
+  creatorTag: { fontSize: '10px', color: '#64748b', marginTop: '4px', textTransform: 'uppercase', margin: 0 },
   proBadge: { fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '6px' },
-  grandTotalCard: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0', textAlign: 'right', minWidth: '320px' },
+  grandTotalCard: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0', width: '100%', boxSizing: 'border-box' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', margin: 0 },
-  statValue: { fontSize: '26px', fontWeight: '900', color: '#10b981', margin: 0 },
-  miniStatsRow: { display: 'flex', justifyContent: 'flex-end', gap: '15px' },
+  statValue: { fontSize: '28px', fontWeight: '900', color: '#10b981', margin: 0 },
+  miniStatsRow: { display: 'flex', justifyContent: 'flex-start', gap: '20px', marginTop: '10px' },
   miniStatBox: { display: 'flex', flexDirection: 'column' },
-  miniStatLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
-  miniStatValue: { fontSize: '13px', fontWeight: '700', color: '#1e293b' },
-  backupBtn: { backgroundColor: '#f1f5f9', color: '#64748b', padding: '10px 15px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' },
-  mainLayout: { display: 'grid', gridTemplateColumns: '380px 1fr', gap: '35px' },
-  card: { backgroundColor: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #e2e8f0', position: 'sticky', top: '20px' },
-  tabHeader: { display: 'flex', gap: '8px', marginBottom: '25px', backgroundColor: '#f1f5f9', padding: '6px', borderRadius: '14px' },
-  tab: { flex: 1, padding: '10px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', borderRadius: '10px', fontSize: '13px', fontWeight: '600' },
-  activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', cursor: 'pointer', borderRadius: '10px', fontSize: '13px', fontWeight: '700', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
+  miniStatLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8' },
+  miniStatValue: { fontSize: '14px', fontWeight: '700', color: '#1e293b' },
+  backupBtn: { backgroundColor: '#fff', color: '#64748b', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' },
+  mainLayout: { display: 'flex', flexDirection: 'column', gap: '25px' },
+  card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
+  tabHeader: { display: 'flex', gap: '6px', marginBottom: '20px', backgroundColor: '#f1f5f9', padding: '5px', borderRadius: '12px' },
+  tab: { flex: 1, padding: '10px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', borderRadius: '8px', fontSize: '13px', fontWeight: '600' },
+  activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', cursor: 'pointer', borderRadius: '8px', fontSize: '13px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
-  searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px 18px', borderRadius: '14px', border: '1px solid #e2e8f0' },
-  searchInput: { border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '13px' },
-  scrollDropdown: { position: 'absolute', top: '55px', width: '100%', maxHeight: '200px', overflowY: 'auto', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', zIndex: 100 },
-  dropdownItem: { padding: '12px 18px', fontSize: '12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' },
-  form: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  field: { flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' },
+  searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
+  searchInput: { border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '16px' },
+  scrollDropdown: { position: 'absolute', top: '55px', width: '100%', maxHeight: '200px', overflowY: 'auto', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 100 },
+  dropdownItem: { padding: '12px', fontSize: '12px', borderBottom: '1px solid #f1f5f9' },
+  form: { display: 'flex', flexDirection: 'column', gap: '15px' },
+  field: { display: 'flex', flexDirection: 'column', gap: '6px' },
   label: { fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
-  input: { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fcfcfd' },
-  row: { display: 'flex', gap: '12px', alignItems: 'flex-end' },
-  submitBtn: { backgroundColor: '#0f172a', color: '#fff', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer', marginTop: '10px' },
-  sectionHeader: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', marginBottom: '15px', color: '#1e293b' },
-  tableCard: { backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden' },
-  makerHeader: { backgroundColor: '#f8fafc', padding: '8px 25px', fontSize: '10px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' },
-  tableRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 25px', borderBottom: '1px solid #f1f5f9' },
+  input: { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '16px', outline: 'none', boxSizing: 'border-box' },
+  row: { display: 'flex', gap: '10px' },
+  submitBtn: { backgroundColor: '#0f172a', color: '#fff', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer' },
+  sectionHeader: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '900', color: '#1e293b', marginBottom: '15px' },
+  tableCard: { backgroundColor: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0' },
+  makerHeader: { backgroundColor: '#f8fafc', padding: '10px 20px', fontSize: '10px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' },
+  tableRow: { display: 'flex', flexDirection: 'column', padding: '15px 20px', borderBottom: '1px solid #f1f5f9', gap: '10px' },
   gameInfo: { display: 'flex', alignItems: 'center', gap: '15px' },
-  avatar: { width: '32px', height: '32px', backgroundColor: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' },
-  priceArea: { display: 'flex', alignItems: 'center', gap: '20px' },
-  priceText: { fontSize: '15px', fontWeight: '800', color: '#0f172a' },
+  avatar: { width: '35px', height: '35px', backgroundColor: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '800' },
+  priceArea: { display: 'flex', justifyContent: 'flex-end' },
+  priceText: { fontSize: '16px', fontWeight: '800', color: '#0f172a' },
   statusLabel: { fontSize: '9px', textTransform: 'uppercase', fontWeight: '700' },
-  empty: { padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }
+  empty: { padding: '40px', textAlign: 'center', color: '#94a3b8' }
 };
+
+// --- DESKTOP OVERRIDES ---
+if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+  styles.header.flexDirection = 'row';
+  styles.header.justifyContent = 'space-between';
+  styles.headerRight.flexDirection = 'row';
+  styles.headerRight.alignItems = 'flex-start';
+  styles.grandTotalCard.width = '320px';
+  styles.grandTotalCard.textAlign = 'right';
+  styles.miniStatsRow.justifyContent = 'flex-end';
+  styles.mainLayout.display = 'grid';
+  styles.mainLayout.gridTemplateColumns = '380px 1fr';
+  styles.tableRow.flexDirection = 'row';
+  styles.tableRow.justifyContent = 'space-between';
+}
