@@ -3,7 +3,7 @@ import { db } from './db';
 import { PS4_LIBRARY } from './library';
 import { 
   Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
-  Truck, Activity, Eye, Code, Globe, Plus, Lock
+  Truck, Activity, Eye, Code, Globe, Plus, Lock, RefreshCcw
 } from 'lucide-react';
 
 export default function App() {
@@ -21,25 +21,27 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
-  const loadCloudData = useCallback(async () => {
-    try {
-      const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
-      setGames(gData || []);
-      setHardware(hData || []);
-      if (gData.length > 0) gData.forEach(game => fetchLiveMarket(game.title));
-    } catch (err) { console.error("Cloud Sync Error:", err); }
-  }, []);
-
-  useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
-
+  // --- MARKET INTEL FETCH ---
   const fetchLiveMarket = async (title) => {
     if (!title || marketIntel[title]) return; 
     try {
       const response = await fetch(`http://localhost:5001/api/market-intel?title=${encodeURIComponent(title)}`);
       const data = await response.json();
       setMarketIntel(prev => ({ ...prev, [title]: data }));
-    } catch (err) { /* Blocked by HTTPS on Vercel[cite: 2] */ }
+    } catch (err) { console.warn("Market Engine Offline on Port 5001"); }
   };
+
+  const loadCloudData = useCallback(async () => {
+    try {
+      const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
+      setGames(gData || []);
+      setHardware(hData || []);
+      // Auto-scan existing games for valuations on load
+      if (gData.length > 0) gData.forEach(game => fetchLiveMarket(game.title));
+    } catch (err) { console.error("Cloud Sync Error:", err); }
+  }, [marketIntel]);
+
+  useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus]);
 
   const selectItem = (item) => {
     setFormData({ ...formData, [activeTab === 'Games'?'title':'name']: item.title, studio: item.studio });
@@ -47,13 +49,10 @@ export default function App() {
     fetchLiveMarket(item.title);
   };
 
-  // --- REPAIRED: NON-BLOCKING OPTIMISTIC DELETE ---
   const handleDelete = (id) => {
     if (!window.confirm("Delete this asset?")) return;
-    
     if (activeTab === 'Games') setGames(prev => prev.filter(g => (g.id || g._id) !== id));
     else setHardware(prev => prev.filter(h => (h.id || h._id) !== id));
-
     setTimeout(async () => {
       try {
         activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
@@ -134,7 +133,12 @@ export default function App() {
           </div>
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}><span style={styles.statLabel}>Grand Total</span><h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {(stats.games+stats.hardware).toLocaleString()}</h2></div>
-            <div style={styles.statBox}><span style={styles.statLabel}>Logistics</span><p style={{...styles.statDetail, color:'#3b82f6'}}>Shipped: Rs. {stats.shipped.toLocaleString()}</p></div>
+            <div style={styles.statBox}>
+              <span style={styles.statLabel}>Market Valuation</span>
+              <button onClick={() => games.forEach(g => fetchLiveMarket(g.title))} style={styles.scanBtn}>
+                <RefreshCcw size={12}/> Scan Market
+              </button>
+            </div>
           </div>
           <button onClick={() => {setAuthStatus('logged-out'); localStorage.removeItem('axon_auth');}} style={styles.logoutBtn}>Logout</button>
         </header>
@@ -164,11 +168,10 @@ export default function App() {
                 </form>
               </div>
             ) : (
-              /* --- RESTORED: FULL GUEST INFO DASHBOARD --- */
               <div style={styles.guestCard}>
                 <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
                 <h3 style={styles.guestTitle}>Observer Dashboard</h3>
-                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> verified digital asset collection.[cite: 1]</p>
+                <p style={styles.guestText}>Live synchronization of <b>Shifanth Jasim's</b> collection.</p>
                 <div style={styles.guestMetrics}>
                    <div style={styles.metricItem}><Activity size={14}/> <span>Verified: {stats.totalCount} Units</span></div>
                    <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
@@ -192,7 +195,9 @@ export default function App() {
                             <div style={styles.titleFlex}>
                                 <b>{item.title || item.name}</b>
                                 {activeTab === 'Games' && marketIntel[item.title] && (
-                                  <span style={styles.marketTag}><Globe size={10}/> Rs. {marketIntel[item.title].amount.toLocaleString()}</span>
+                                  <span style={styles.marketTag} title={`${marketIntel[item.title].description} via ${marketIntel[item.title].source}`}>
+                                    <Globe size={10}/> Est: Rs. {marketIntel[item.title].amount.toLocaleString()}
+                                  </span>
                                 )}
                             </div>
                             <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Del: {shipVal(item).toLocaleString()}</small>
@@ -235,6 +240,7 @@ const styles = {
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
   statDetail: { fontSize: '11px', fontWeight: '700', color: '#475569', margin: '2px 0' },
+  scanBtn: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '5px 10px', fontSize: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display:'block' },
