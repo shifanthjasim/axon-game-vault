@@ -244,7 +244,11 @@ export default function App() {
                           {authStatus==='admin' && (
                             <div style={{display:'flex', gap:'12px'}}>
                                 <Edit3 size={15} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id || item._id); setFormData(item); window.scrollTo(0,0);}}/>
-                                <Trash2 size={15} style={{cursor:'pointer', color:'#fca5a5'}} onClick={()=>handleDelete(item.id || item._id)}/>
+                                <Trash2 
+  size={15} 
+  style={{cursor:'pointer', color:'#fca5a5'}} 
+  onClick={() => handleDelete(item._id)} // MUST use _id for MongoDB
+/>
                             </div>
                           )}
                         </div>
