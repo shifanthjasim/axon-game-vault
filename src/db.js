@@ -59,13 +59,13 @@ export const db = {
       if (!res.ok) throw new Error('Failed to update hardware');
       return await res.json();
     },
-    // NEW: Delete hardware from the cloud
-    delete: async (id) => {
-      const res = await fetch(`${API_BASE}/hardware/${id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete hardware');
-      return true;
-    }
+   // Update the delete method in your db.js
+delete: async (id) => {
+  const res = await fetch(`${API_BASE}/games?id=${id}`, { // Note the ?id=
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to delete game');
+  return true;
+}
   }
 };
