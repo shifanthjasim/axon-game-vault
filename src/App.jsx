@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './db';
 import { PS4_LIBRARY } from './library';
-import { 
-  Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3, 
+import {
+  Search, Gamepad2, Landmark, Trash2, ShieldCheck, Edit3,
   Truck, Activity, Eye, Code, Globe, Plus, Lock, Calendar, TrendingUp, TrendingDown
 } from 'lucide-react';
 
@@ -32,10 +32,10 @@ export default function App() {
   useEffect(() => { if (authStatus !== 'logged-out') loadCloudData(); }, [authStatus, loadCloudData]);
 
   const selectItem = (item) => {
-    setFormData({ 
-      ...formData, 
-      [activeTab === 'Games'?'title':'name']: item.title, 
-      studio: item.studio 
+    setFormData({
+      ...formData,
+      [activeTab === 'Games' ? 'title' : 'name']: item.title,
+      studio: item.studio
     });
     setSearchTerm('');
   };
@@ -95,16 +95,16 @@ export default function App() {
     e.preventDefault();
     if (authStatus !== 'admin') return;
     try {
-      const payload = { 
-        ...formData, 
-        price: Number(formData.price) || 0, 
-        delivery: Number(formData.delivery) || 0 
+      const payload = {
+        ...formData,
+        price: Number(formData.price) || 0,
+        delivery: Number(formData.delivery) || 0
       };
 
       if (editingId) {
         // Calls the new PUT method in your updated db.js[cite: 3]
-        activeTab === 'Games' 
-          ? await db.games.update(editingId, payload) 
+        activeTab === 'Games'
+          ? await db.games.update(editingId, payload)
           : await db.hardware.update(editingId, payload);
       } else {
         // Calls the POST method[cite: 3]
@@ -114,9 +114,9 @@ export default function App() {
       setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid' });
       setEditingId(null);
       loadCloudData();
-    } catch (err) { 
+    } catch (err) {
       console.error("Cloud Save Error:", err);
-      alert("Save Error: Verify cloud database connection."); 
+      alert("Save Error: Verify cloud database connection.");
     }
   };
 
@@ -126,11 +126,11 @@ export default function App() {
         <div style={styles.loginCard}>
           <div style={styles.loginLogoBox}><Gamepad2 size={40} color="#fff" /></div>
           <div style={styles.brandRow}>
-            <h1 style={{...styles.logoText, fontSize: '28px'}}>AXON</h1>
+            <h1 style={{ ...styles.logoText, fontSize: '28px' }}>AXON</h1>
             <span style={styles.proBadge}>GATEWAY</span>
           </div>
           <p style={styles.creatorTag}>Senior Engineer Shifanth Jasim</p>
-          <form onSubmit={(e) => { e.preventDefault(); if(passInput === '1234') setAuthStatus('admin'); }} style={{marginTop:'25px'}}>
+          <form onSubmit={(e) => { e.preventDefault(); if (passInput === '1234') setAuthStatus('admin'); }} style={{ marginTop: '25px' }}>
             <input type="password" style={styles.input} placeholder="Architect Code" value={passInput} onChange={e => setPassInput(e.target.value)} />
             <button type="submit" style={styles.submitBtn}>Unlock System</button>
           </form>
@@ -148,33 +148,33 @@ export default function App() {
             <div style={styles.logoBox}><Gamepad2 size={24} color="#fff" /></div>
             <div style={styles.brandTitleGroup}>
               <h1 style={styles.logoText}>GameVault <span style={styles.proBadge}>PRO</span></h1>
-              <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{color: '#0f172a'}}>SENIOR ENGINEER SHIFANTH JASIM</span></p>
+              <p style={styles.creatorTag}>SYSTEM ARCHITECT: <span style={{ color: '#0f172a' }}>SENIOR ENGINEER SHIFANTH JASIM</span></p>
             </div>
           </div>
-          
+
           <div style={styles.analyticsGrid}>
             <div style={styles.statBox}>
               <span style={styles.statLabel}>PS4 Library Value</span>
-              <h2 style={{...styles.statValue, color:'#10b981'}}>Rs. {stats.totalValue.toLocaleString()}</h2>
-              <div style={{display:'flex', alignItems:'center', gap:'5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center'}}>
-                {stats.marketYield >= 0 ? <TrendingUp size={12} color="#10b981"/> : <TrendingDown size={12} color="#ef4444"/>}
-                <p style={{...styles.statDetail, color: stats.marketYield >= 0 ? '#10b981' : '#ef4444', margin:0}}>
+              <h2 style={{ ...styles.statValue, color: '#10b981' }}>Rs. {stats.totalValue.toLocaleString()}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center' }}>
+                {stats.marketYield >= 0 ? <TrendingUp size={12} color="#10b981" /> : <TrendingDown size={12} color="#ef4444" />}
+                <p style={{ ...styles.statDetail, color: stats.marketYield >= 0 ? '#10b981' : '#ef4444', margin: 0 }}>
                   Market {stats.marketYield >= 0 ? 'Gain' : 'Loss'}: Rs. {Math.abs(stats.marketYield).toLocaleString()}
                 </p>
               </div>
             </div>
-            
+
             <div style={styles.statBox}>
               <span style={styles.statLabel}>Logistics & Status</span>
-              <h2 style={{...styles.statValue, color:'#3b82f6'}}>Rs. {stats.shippedValue.toLocaleString()}</h2>
-              <div style={{display:'flex', gap:'15px', marginTop:'5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center'}}>
-                <div><span style={styles.miniLabel}>Owned</span><b style={{fontSize:'14px'}}>{stats.gameCount}</b></div>
-                <div><span style={styles.miniLabel}>Pending</span><b style={{fontSize:'14px', color:'#f59e0b'}}>{stats.wishlistCount}</b></div>
-                <div><span style={styles.miniLabel}>In Transit</span><b style={{fontSize:'14px', color:'#3b82f6'}}>{stats.shippingCount}</b></div>
+              <h2 style={{ ...styles.statValue, color: '#3b82f6' }}>Rs. {stats.shippedValue.toLocaleString()}</h2>
+              <div style={{ display: 'flex', gap: '15px', marginTop: '5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center' }}>
+                <div><span style={styles.miniLabel}>Owned</span><b style={{ fontSize: '14px' }}>{stats.gameCount}</b></div>
+                <div><span style={styles.miniLabel}>Pending</span><b style={{ fontSize: '14px', color: '#f59e0b' }}>{stats.wishlistCount}</b></div>
+                <div><span style={styles.miniLabel}>In Transit</span><b style={{ fontSize: '14px', color: '#3b82f6' }}>{stats.shippingCount}</b></div>
               </div>
             </div>
           </div>
-          <button onClick={() => {setAuthStatus('logged-out'); localStorage.removeItem('axon_auth');}} style={styles.logoutBtn}>Logout</button>
+          <button onClick={() => { setAuthStatus('logged-out'); localStorage.removeItem('axon_auth'); }} style={styles.logoutBtn}>Logout</button>
         </header>
 
         <div style={styles.mainLayout}>
@@ -188,16 +188,16 @@ export default function App() {
                 <div style={styles.searchWrapper}>
                   <div style={styles.searchBar}><Search size={14} color="#94a3b8" /><input style={styles.searchInput} placeholder="Auto-fill..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                   {searchTerm && PS4_LIBRARY.filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase())).length > 0 && (
-                    <div style={styles.scrollDropdown}>{PS4_LIBRARY.filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase())).slice(0,8).map((item, i) => (<div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}><b>{item.title}</b></div>))}</div>
+                    <div style={styles.scrollDropdown}>{PS4_LIBRARY.filter(i => i.title.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8).map((item, i) => (<div key={i} style={styles.dropdownItem} onClick={() => selectItem(item)}><b>{item.title}</b></div>))}</div>
                   )}
                 </div>
                 <form onSubmit={handleSubmit} style={styles.form}>
-                  <input style={styles.input} placeholder="Title" value={activeTab === 'Games' ? formData.title : formData.name} onChange={e => setFormData({...formData, [activeTab === 'Games'?'title':'name']: e.target.value})} />
+                  <input style={styles.input} placeholder="Title" value={activeTab === 'Games' ? formData.title : formData.name} onChange={e => setFormData({ ...formData, [activeTab === 'Games' ? 'title' : 'name']: e.target.value })} />
                   <div style={styles.row}>
-                    <div style={{flex:1}}><label style={styles.miniLabel}>Unit Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} /></div>
-                    <div style={{flex:1}}><label style={styles.miniLabel}>Delivery</label><input style={styles.input} type="number" value={formData.delivery} onChange={e => setFormData({...formData, delivery: e.target.value})} /></div>
+                    <div style={{ flex: 1 }}><label style={styles.miniLabel}>Unit Price</label><input style={styles.input} type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} /></div>
+                    <div style={{ flex: 1 }}><label style={styles.miniLabel}>Delivery</label><input style={styles.input} type="number" value={formData.delivery} onChange={e => setFormData({ ...formData, delivery: e.target.value })} /></div>
                   </div>
-                  <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="Paid">Received</option><option value="Shipping">Shipping</option><option value="Pending">Wishlist</option></select>
+                  <select style={styles.input} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}><option value="Paid">Received</option><option value="Shipping">Shipping</option><option value="Pending">Wishlist</option></select>
                   <button type="submit" style={styles.submitBtn}>{editingId ? 'Update Asset' : 'Add to Cloud'}</button>
                 </form>
               </div>
@@ -206,56 +206,56 @@ export default function App() {
                 <div style={styles.guestIconBox}><ShieldCheck size={32} color="#10b981" /></div>
                 <h3 style={styles.guestTitle}>Observer Dashboard</h3>
                 <div style={styles.guestMetrics}>
-                   <div style={styles.metricItem}><Activity size={14}/> <span>Verified Assets: {stats.totalCount}</span></div>
-                   <div style={styles.metricItem}><Code size={14}/> <span>Architect: Shifanth Jasim</span></div>
-                   <div style={styles.metricItem}><Eye size={14}/> <span>Status: Read-Only Access</span></div>
+                  <div style={styles.metricItem}><Activity size={14} /> <span>Verified Assets: {stats.totalCount}</span></div>
+                  <div style={styles.metricItem}><Code size={14} /> <span>Architect: Shifanth Jasim</span></div>
+                  <div style={styles.metricItem}><Eye size={14} /> <span>Status: Read-Only Access</span></div>
                 </div>
-                <div style={styles.guestNotice}><Lock size={12} style={{marginRight:'5px'}}/> System Modifications Restricted</div>
+                <div style={styles.guestNotice}><Lock size={12} style={{ marginRight: '5px' }} /> System Modifications Restricted</div>
               </div>
             )}
           </section>
 
           <section>
             <div style={styles.tableCard}>
-                {Object.keys(getGroupedData()).map(maker => (
-                  <div key={maker}>
-                    <div style={styles.makerHeader}><Landmark size={12}/> {maker}</div>
-                    {getGroupedData()[maker].map(item => (
-                      <div key={item.id || item._id} style={styles.tableRow}>
-                        <div style={styles.gameInfo}>
-                          <div style={{...styles.avatar, backgroundColor: item.status==='Shipping'?'#dbeafe':'#f1f5f9'}}>{item.status==='Shipping'?<Truck size={14} color="#3b82f6"/>:(item.title||item.name).charAt(0)}</div>
-                          <div>
-                            <div style={styles.titleFlex}>
-                                <b>{item.title || item.name}</b>
-                                {getManualEst(item.title || item.name) > 0 && (
-                                  <span style={{...styles.marketTag, backgroundColor: (getManualEst(item.title || item.name) - totalVal(item)) >= 0 ? '#f0fdf4' : '#fef2f2', color: (getManualEst(item.title || item.name) - totalVal(item)) >= 0 ? '#10b981' : '#ef4444'}}>
-                                    <Globe size={10}/> Resell: Rs. {getManualEst(item.title || item.name).toLocaleString()}
-                                  </span>
-                                )}
-                            </div>
-                            <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Ship: {shipVal(item).toLocaleString()}</small>
+              {Object.keys(getGroupedData()).map(maker => (
+                <div key={maker}>
+                  <div style={styles.makerHeader}><Landmark size={12} /> {maker}</div>
+                  {getGroupedData()[maker].map(item => (
+                    <div key={item.id || item._id} style={styles.tableRow}>
+                      <div style={styles.gameInfo}>
+                        <div style={{ ...styles.avatar, backgroundColor: item.status === 'Shipping' ? '#dbeafe' : '#f1f5f9' }}>{item.status === 'Shipping' ? <Truck size={14} color="#3b82f6" /> : (item.title || item.name).charAt(0)}</div>
+                        <div>
+                          <div style={styles.titleFlex}>
+                            <b>{item.title || item.name}</b>
+                            {getManualEst(item.title || item.name) > 0 && (
+                              <span style={{ ...styles.marketTag, backgroundColor: (getManualEst(item.title || item.name) - totalVal(item)) >= 0 ? '#f0fdf4' : '#fef2f2', color: (getManualEst(item.title || item.name) - totalVal(item)) >= 0 ? '#10b981' : '#ef4444' }}>
+                                <Globe size={10} /> Resell: Rs. {getManualEst(item.title || item.name).toLocaleString()}
+                              </span>
+                            )}
                           </div>
-                        </div>
-                        <div style={styles.priceArea}>
-                          <div style={styles.priceAlign}>
-                             <b style={{fontSize:'14px'}}>Rs. {totalVal(item).toLocaleString()}</b>
-                             <span style={{...styles.statusTag, color: item.status==='Shipping'?'#3b82f6':item.status==='Pending'?'#f59e0b':'#64748b'}}>{item.status}</span>
-                          </div>
-                          {authStatus==='admin' && (
-                            <div style={{display:'flex', gap:'12px'}}>
-                                <Edit3 size={15} style={{cursor:'pointer', color:'#cbd5e1'}} onClick={()=>{setEditingId(item.id || item._id); setFormData(item); window.scrollTo(0,0);}}/>
-                                <Trash2 
-  size={15} 
-  style={{cursor:'pointer', color:'#fca5a5'}} 
-  onClick={() => handleDelete(item._id)} // MUST use _id for MongoDB
-/>
-                            </div>
-                          )}
+                          <small style={styles.costBreakdown}>Base: {baseVal(item).toLocaleString()} + Ship: {shipVal(item).toLocaleString()}</small>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      <div style={styles.priceArea}>
+                        <div style={styles.priceAlign}>
+                          <b style={{ fontSize: '14px' }}>Rs. {totalVal(item).toLocaleString()}</b>
+                          <span style={{ ...styles.statusTag, color: item.status === 'Shipping' ? '#3b82f6' : item.status === 'Pending' ? '#f59e0b' : '#64748b' }}>{item.status}</span>
+                        </div>
+                        {authStatus === 'admin' && (
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <Edit3 size={15} style={{ cursor: 'pointer', color: '#cbd5e1' }} onClick={() => { setEditingId(item.id || item._id); setFormData(item); window.scrollTo(0, 0); }} />
+                            <Trash2
+                              size={15}
+                              style={{ cursor: 'pointer', color: '#fca5a5' }}
+                              onClick={() => handleDelete(item._id)} // MUST use _id for MongoDB
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           </section>
         </div>
@@ -281,11 +281,11 @@ const styles = {
   statDetail: { fontSize: '11px', fontWeight: '700', margin: '2px 0' },
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
-  miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display:'block' },
+  miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display: 'block' },
   input: { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '16px', boxSizing: 'border-box', marginBottom: '10px' },
   submitBtn: { width: '100%', backgroundColor: '#0f172a', color: '#fff', padding: '15px', borderRadius: '12px', border: 'none', fontWeight: '700', cursor: 'pointer' },
   tableCard: { backgroundColor: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' },
-  makerHeader: { backgroundColor: '#f8fafc', padding: '12px 20px', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display:'flex', alignItems:'center', gap:'8px' },
+  makerHeader: { backgroundColor: '#f8fafc', padding: '12px 20px', fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' },
   tableRow: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', borderBottom: '1px solid #f1f5f9', alignItems: 'center' },
   gameInfo: { display: 'flex', alignItems: 'center', gap: '12px', flex: 1 },
   titleFlex: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
@@ -298,14 +298,14 @@ const styles = {
   loginOverlay: { height: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' },
   loginCard: { backgroundColor: '#fff', padding: '35px', borderRadius: '32px', width: '100%', maxWidth: '380px', textAlign: 'center' },
   loginLogoBox: { backgroundColor: '#0f172a', padding: '15px', borderRadius: '15px', display: 'inline-block', marginBottom: '15px' },
-  logoutBtn: { padding: '10px 20px', borderRadius: '12px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '12px', fontWeight: '700', cursor:'pointer', marginTop: '10px', width: 'fit-content' },
+  logoutBtn: { padding: '10px 20px', borderRadius: '12px', border: '1px solid #fee2e2', color: '#ef4444', background: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer', marginTop: '10px', width: 'fit-content' },
   searchWrapper: { position: 'relative', marginBottom: '15px' },
   searchBar: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
   searchInput: { border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '14px' },
   scrollDropdown: { position: 'absolute', top: '55px', width: '100%', maxHeight: '200px', overflowY: 'auto', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 100 },
-  dropdownItem: { padding: '12px', fontSize: '12px', borderBottom: '1px solid #f1f5f9', cursor:'pointer' },
+  dropdownItem: { padding: '12px', fontSize: '12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' },
   tabHeader: { display: 'flex', gap: '5px', marginBottom: '15px', backgroundColor: '#f1f5f9', padding: '5px', borderRadius: '10px' },
-  tab: { flex: 1, padding: '10px', border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor:'pointer' },
+  tab: { flex: 1, padding: '10px', border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
   activeTab: { flex: 1, padding: '10px', border: 'none', backgroundColor: '#fff', borderRadius: '8px', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
   guestBtn: { background: 'none', border: 'none', color: '#64748b', marginTop: '10px', fontWeight: '600', cursor: 'pointer' },
   row: { display: 'flex', gap: '10px' },
@@ -313,7 +313,7 @@ const styles = {
   guestIconBox: { backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '20px', display: 'inline-block', marginBottom: '15px' },
   guestTitle: { fontSize: '18px', fontWeight: '900', color: '#1e293b', margin: '0 0 10px 0' },
   guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px' },
-  metricItem: { display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontSize:'12px', fontWeight:'700', color:'#475569', backgroundColor:'#f8fafc', padding:'8px', borderRadius:'10px' },
+  metricItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', backgroundColor: '#f8fafc', padding: '8px', borderRadius: '10px' },
   proBadge: { fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' }
 };
 
