@@ -1,4 +1,4 @@
-// db.js - Optimized Cloud Implementation
+// db.js - Senior Engineer Cloud Implementation
 const API_BASE = '/api';
 
 export const db = {
@@ -16,16 +16,16 @@ export const db = {
       return await res.json();
     },
     update: async (id, game) => {
-      // Fixed: Send ID as a query parameter to match your Vercel API
+      // Matches the ?id= logic that fixed your Delete function[cite: 2, 4]
       const res = await fetch(`${API_BASE}/games?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(game),
       });
+      if (!res.ok) throw new Error('Cloud Update Failed');
       return await res.json();
     },
     delete: async (id) => {
-      // Fixed: Match the handleDelete(item._id) call in App.jsx
       const res = await fetch(`${API_BASE}/games?id=${id}`, {
         method: 'DELETE',
       });
@@ -52,13 +52,15 @@ export const db = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item),
       });
+      if (!res.ok) throw new Error('Cloud Update Failed');
       return await res.json();
     },
     delete: async (id) => {
       const res = await fetch(`${API_BASE}/hardware?id=${id}`, {
         method: 'DELETE',
       });
-      return res.ok;
+      if (!res.ok) throw new Error('Cloud Delete Failed');
+      return true;
     }
   }
 };
