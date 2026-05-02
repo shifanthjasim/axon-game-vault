@@ -20,6 +20,7 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
+  // LOAD DATA FROM CLOUD[cite: 3]
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
@@ -39,15 +40,17 @@ export default function App() {
     setSearchTerm('');
   };
 
-  const handleDelete = (id) => {
+  // FIXED DELETE HANDLER FOR CLOUD[cite: 3]
+  const handleDelete = async (id) => {
     if (!window.confirm("Delete this asset?")) return;
-    if (activeTab === 'Games') setGames(prev => prev.filter(g => (g.id || g._id) !== id));
-    else setHardware(prev => prev.filter(h => (h.id || h._id) !== id));
-    setTimeout(async () => {
-      try {
-        activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
-      } catch (err) { loadCloudData(); }
-    }, 0);
+    try {
+      // Calls the new DELETE method in your updated db.js[cite: 3]
+      activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
+      loadCloudData(); // Sync with cloud after deletion[cite: 3]
+    } catch (err) {
+      console.error("Cloud Delete Error:", err);
+      alert("Delete failed on cloud server.");
+    }
   };
 
   const getManualEst = (title) => {
@@ -66,7 +69,6 @@ export default function App() {
     gameCount: games.filter(g => g.status === 'Paid').length,
     wishlistCount: games.filter(g => g.status === 'Pending').length,
     shippingCount: games.filter(g => g.status === 'Shipping').length,
-    // Calculation for Market Gain/Loss
     marketYield: games.reduce((acc, g) => {
       const marketPrice = getManualEst(g.title);
       if (marketPrice === 0) return acc;
@@ -88,20 +90,34 @@ export default function App() {
     }, {});
   };
 
+  // FIXED SUBMIT HANDLER FOR CLOUD EDITS[cite: 3]
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (authStatus !== 'admin') return;
     try {
-      const payload = { ...formData, price: Number(formData.price) || 0, delivery: Number(formData.delivery) || 0 };
+      const payload = { 
+        ...formData, 
+        price: Number(formData.price) || 0, 
+        delivery: Number(formData.delivery) || 0 
+      };
+
       if (editingId) {
-        activeTab === 'Games' ? await db.games.update(editingId, payload) : await db.hardware.update(editingId, payload);
+        // Calls the new PUT method in your updated db.js[cite: 3]
+        activeTab === 'Games' 
+          ? await db.games.update(editingId, payload) 
+          : await db.hardware.update(editingId, payload);
       } else {
+        // Calls the POST method[cite: 3]
         activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
       }
+
       setFormData({ title: '', studio: '', name: '', type: 'Console', price: '', delivery: '0', status: 'Paid' });
       setEditingId(null);
       loadCloudData();
-    } catch (err) { alert("Save Error"); }
+    } catch (err) { 
+      console.error("Cloud Save Error:", err);
+      alert("Save Error: Verify cloud database connection."); 
+    }
   };
 
   if (authStatus === 'logged-out') {
@@ -248,20 +264,17 @@ const styles = {
   container: { minHeight: '100vh', backgroundColor: '#f1f5f9', padding: '15px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'border-box' },
   content: { maxWidth: '1200px', margin: '0 auto' },
   header: { display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px' },
-  
   brandSection: { display: 'flex', alignItems: 'center', gap: '15px' },
   brandTitleGroup: { display: 'flex', flexDirection: 'column', gap: '2px' },
   logoBox: { backgroundColor: '#0f172a', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', minHeight: '44px' },
   logoText: { fontSize: '26px', fontWeight: '900', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px', lineHeight: '1' },
   brandRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '5px' },
-
   creatorTag: { fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' },
   analyticsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' },
   statBox: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0', textAlign: 'center' },
   statLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   statValue: { fontSize: '22px', fontWeight: '900', margin: '5px 0' },
   statDetail: { fontSize: '11px', fontWeight: '700', margin: '2px 0' },
-  
   mainLayout: { display: 'flex', flexDirection: 'column', gap: '20px' },
   card: { backgroundColor: '#fff', padding: '20px', borderRadius: '24px', border: '1px solid #e2e8f0' },
   miniLabel: { fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px', display:'block' },
