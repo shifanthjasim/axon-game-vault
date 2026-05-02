@@ -16,7 +16,6 @@ export const db = {
       return await res.json();
     },
     update: async (id, game) => {
-      // Matches the ?id= logic that fixed your Delete function[cite: 2, 4]
       const res = await fetch(`${API_BASE}/games?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

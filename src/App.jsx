@@ -20,7 +20,6 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
-  // LOAD DATA FROM MONGODB CLOUD
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
@@ -40,11 +39,9 @@ export default function App() {
     setSearchTerm('');
   };
 
-  // FIXED DELETE HANDLER FOR MONGODB _id[cite: 3, 6]
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this asset?")) return;
     try {
-      // Logic uses the unique MongoDB _id
       activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
       loadCloudData(); 
     } catch (err) {
@@ -90,19 +87,19 @@ export default function App() {
     }, {});
   };
 
-  // CLOUD SUBMIT HANDLER[cite: 3, 6]
+  // FIXED: Cleans immutable _id from payload before sending to cloud[cite: 7, 13]
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (authStatus !== 'admin') return;
     try {
+      const { _id, ...cleanData } = formData; 
       const payload = {
-        ...formData,
+        ...cleanData,
         price: Number(formData.price) || 0,
         delivery: Number(formData.delivery) || 0
       };
 
       if (editingId) {
-        // Updates based on MongoDB _id[cite: 6]
         activeTab === 'Games'
           ? await db.games.update(editingId, payload)
           : await db.hardware.update(editingId, payload);
@@ -155,7 +152,7 @@ export default function App() {
             <div style={styles.statBox}>
               <span style={styles.statLabel}>PS4 Library Value</span>
               <h2 style={{ ...styles.statValue, color: '#10b981' }}>Rs. {stats.totalValue.toLocaleString()}</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center' }}>
+              <div style={styles.marketRow}>
                 {stats.marketYield >= 0 ? <TrendingUp size={12} color="#10b981" /> : <TrendingDown size={12} color="#ef4444" />}
                 <p style={{ ...styles.statDetail, color: stats.marketYield >= 0 ? '#10b981' : '#ef4444', margin: 0 }}>
                   Market {stats.marketYield >= 0 ? 'Gain' : 'Loss'}: Rs. {Math.abs(stats.marketYield).toLocaleString()}
@@ -166,7 +163,7 @@ export default function App() {
             <div style={styles.statBox}>
               <span style={styles.statLabel}>Logistics & Status</span>
               <h2 style={{ ...styles.statValue, color: '#3b82f6' }}>Rs. {stats.shippedValue.toLocaleString()}</h2>
-              <div style={{ display: 'flex', gap: '15px', marginTop: '5px', justifyContent: window.innerWidth >= 1024 ? 'flex-start' : 'center' }}>
+              <div style={styles.logisticsRow}>
                 <div><span style={styles.miniLabel}>Owned</span><b style={{ fontSize: '14px' }}>{stats.gameCount}</b></div>
                 <div><span style={styles.miniLabel}>Pending</span><b style={{ fontSize: '14px', color: '#f59e0b' }}>{stats.wishlistCount}</b></div>
                 <div><span style={styles.miniLabel}>In Transit</span><b style={{ fontSize: '14px', color: '#3b82f6' }}>{stats.shippingCount}</b></div>
@@ -246,7 +243,7 @@ export default function App() {
                             <Trash2
                               size={15}
                               style={{ cursor: 'pointer', color: '#fca5a5' }}
-                              onClick={() => handleDelete(item._id || item.id)} // FIXED: Prioritize MongoDB _id[cite: 6]
+                              onClick={() => handleDelete(item._id || item.id)} 
                             />
                           </div>
                         )}
@@ -313,7 +310,9 @@ const styles = {
   guestTitle: { fontSize: '18px', fontWeight: '900', color: '#1e293b', margin: '0 0 10px 0' },
   guestMetrics: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px' },
   metricItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', backgroundColor: '#f8fafc', padding: '8px', borderRadius: '10px' },
-  proBadge: { fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' }
+  proBadge: { fontSize: '10px', backgroundColor: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' },
+  marketRow: { display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' },
+  logisticsRow: { display: 'flex', gap: '15px', marginTop: '5px', justifyContent: 'center' }
 };
 
 if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
@@ -323,4 +322,6 @@ if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
   styles.header.justifyContent = 'space-between';
   styles.header.alignItems = 'center';
   styles.statBox.textAlign = 'left';
+  styles.marketRow.justifyContent = 'flex-start';
+  styles.logisticsRow.justifyContent = 'flex-start';
 }
