@@ -20,7 +20,7 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem('axon_auth', authStatus); }, [authStatus]);
 
-  // LOAD DATA FROM CLOUD[cite: 3]
+  // LOAD DATA FROM MONGODB CLOUD
   const loadCloudData = useCallback(async () => {
     try {
       const [gData, hData] = await Promise.all([db.games.toArray(), db.hardware.toArray()]);
@@ -40,13 +40,13 @@ export default function App() {
     setSearchTerm('');
   };
 
-  // FIXED DELETE HANDLER FOR CLOUD[cite: 3]
+  // FIXED DELETE HANDLER FOR MONGODB _id[cite: 3, 6]
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this asset?")) return;
     try {
-      // Calls the new DELETE method in your updated db.js[cite: 3]
+      // Logic uses the unique MongoDB _id
       activeTab === 'Games' ? await db.games.delete(id) : await db.hardware.delete(id);
-      loadCloudData(); // Sync with cloud after deletion[cite: 3]
+      loadCloudData(); 
     } catch (err) {
       console.error("Cloud Delete Error:", err);
       alert("Delete failed on cloud server.");
@@ -90,7 +90,7 @@ export default function App() {
     }, {});
   };
 
-  // FIXED SUBMIT HANDLER FOR CLOUD EDITS[cite: 3]
+  // CLOUD SUBMIT HANDLER[cite: 3, 6]
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (authStatus !== 'admin') return;
@@ -102,12 +102,11 @@ export default function App() {
       };
 
       if (editingId) {
-        // Calls the new PUT method in your updated db.js[cite: 3]
+        // Updates based on MongoDB _id[cite: 6]
         activeTab === 'Games'
           ? await db.games.update(editingId, payload)
           : await db.hardware.update(editingId, payload);
       } else {
-        // Calls the POST method[cite: 3]
         activeTab === 'Games' ? await db.games.add(payload) : await db.hardware.add(payload);
       }
 
@@ -221,7 +220,7 @@ export default function App() {
                 <div key={maker}>
                   <div style={styles.makerHeader}><Landmark size={12} /> {maker}</div>
                   {getGroupedData()[maker].map(item => (
-                    <div key={item.id || item._id} style={styles.tableRow}>
+                    <div key={item._id || item.id} style={styles.tableRow}>
                       <div style={styles.gameInfo}>
                         <div style={{ ...styles.avatar, backgroundColor: item.status === 'Shipping' ? '#dbeafe' : '#f1f5f9' }}>{item.status === 'Shipping' ? <Truck size={14} color="#3b82f6" /> : (item.title || item.name).charAt(0)}</div>
                         <div>
@@ -243,11 +242,11 @@ export default function App() {
                         </div>
                         {authStatus === 'admin' && (
                           <div style={{ display: 'flex', gap: '12px' }}>
-                            <Edit3 size={15} style={{ cursor: 'pointer', color: '#cbd5e1' }} onClick={() => { setEditingId(item.id || item._id); setFormData(item); window.scrollTo(0, 0); }} />
+                            <Edit3 size={15} style={{ cursor: 'pointer', color: '#cbd5e1' }} onClick={() => { setEditingId(item._id || item.id); setFormData(item); window.scrollTo(0, 0); }} />
                             <Trash2
                               size={15}
                               style={{ cursor: 'pointer', color: '#fca5a5' }}
-                              onClick={() => handleDelete(item._id)} // MUST use _id for MongoDB
+                              onClick={() => handleDelete(item._id || item.id)} // FIXED: Prioritize MongoDB _id[cite: 6]
                             />
                           </div>
                         )}

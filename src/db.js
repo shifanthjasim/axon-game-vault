@@ -1,12 +1,11 @@
-// db.js - Senior Engineer Cloud Implementation
+// db.js - Optimized Cloud Implementation
 const API_BASE = '/api';
 
 export const db = {
   games: {
     toArray: async () => {
       const res = await fetch(`${API_BASE}/games`);
-      if (!res.ok) throw new Error('Failed to fetch games');
-      return await res.json();
+      return res.ok ? await res.json() : [];
     },
     add: async (game) => {
       const res = await fetch(`${API_BASE}/games`, {
@@ -16,30 +15,28 @@ export const db = {
       });
       return await res.json();
     },
-    // NEW: Update existing game in the cloud
     update: async (id, game) => {
-      const res = await fetch(`${API_BASE}/games/${id}`, {
+      // Fixed: Send ID as a query parameter to match your Vercel API
+      const res = await fetch(`${API_BASE}/games?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(game),
       });
-      if (!res.ok) throw new Error('Failed to update game');
       return await res.json();
     },
-    // NEW: Delete game from the cloud
     delete: async (id) => {
-      const res = await fetch(`${API_BASE}/games/${id}`, {
+      // Fixed: Match the handleDelete(item._id) call in App.jsx
+      const res = await fetch(`${API_BASE}/games?id=${id}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Failed to delete game');
+      if (!res.ok) throw new Error('Cloud Delete Failed');
       return true;
     }
   },
   hardware: {
     toArray: async () => {
       const res = await fetch(`${API_BASE}/hardware`);
-      if (!res.ok) throw new Error('Failed to fetch hardware');
-      return await res.json();
+      return res.ok ? await res.json() : [];
     },
     add: async (item) => {
       const res = await fetch(`${API_BASE}/hardware`, {
@@ -49,23 +46,19 @@ export const db = {
       });
       return await res.json();
     },
-    // NEW: Update hardware in the cloud
     update: async (id, item) => {
-      const res = await fetch(`${API_BASE}/hardware/${id}`, {
+      const res = await fetch(`${API_BASE}/hardware?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item),
       });
-      if (!res.ok) throw new Error('Failed to update hardware');
       return await res.json();
     },
-   // Update the delete method in your db.js
-delete: async (id) => {
-  const res = await fetch(`${API_BASE}/games?id=${id}`, { // Note the ?id=
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Failed to delete game');
-  return true;
-}
+    delete: async (id) => {
+      const res = await fetch(`${API_BASE}/hardware?id=${id}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    }
   }
 };
